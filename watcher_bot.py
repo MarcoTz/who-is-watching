@@ -79,6 +79,9 @@ class WatcherBot:
             if watcher is None:
                 continue 
             people_list.append(watcher)
+
+        if len(people_list) == 0:
+            ret_msg : str = 'Could not find people %s' % ', '.join(watchers)
         shows : list[Show] = self.show_manager.get_possible_shows(people_list)
 
         watcher_names : list[str] = list(map(lambda x: x.name,people_list))

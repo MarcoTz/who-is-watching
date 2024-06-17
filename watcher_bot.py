@@ -163,7 +163,8 @@ class WatcherBot:
         person : Person | None = self.show_manager.get_person(person_name)
     
         if person is None:
-            ret_msg : str = 'Could not find %s' % person_name
+            show_strs : list[str] =list(map(lambda x: '%s (%s)' % (x.name,str(x.current_ep)),self.show_manager.shows))
+            ret_msg : str = 'All shows:\n%s' % ('\n'.join(show_strs))
             await self.send_message(update,context,ret_msg)
             return
 

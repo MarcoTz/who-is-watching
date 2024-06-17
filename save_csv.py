@@ -10,7 +10,7 @@ def save_shows(shows:list[tuple[str,str]],shows_file_name:str) -> None:
 
 def save_watchers(watchers:list[tuple[str,str]],watchers_file_name:str) -> None:
     watchers_file = open(watchers_file_name,'w+')
-    header_row = tuple[str,str] = ('Person','Show')
+    header_row : tuple[str,str] = ('Person','Show')
     writer = csv.writer(watchers_file,delimiter=';')
     writer.writerow(header_row)
     for watcher in watchers:

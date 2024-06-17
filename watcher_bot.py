@@ -26,7 +26,8 @@ class WatcherBot:
                 ('remove_watcher',  '$person;$show', 'remove person watching show',                  self.remove_watcher),
                 ('update_show',     '$show;$nr',     'update episode number for show',               self.update_show),
                 ('add_show',        '$show',         'add new show',                                 self.add_show),
-                ('show_shows',      '$person',       'show shows person is watching',                self.show_shows)
+                ('show_shows',      '$person',       'show shows person is watching',                self.show_shows),
+                ('remove_show',     '$show',         'reove a show',                                 self.remove_show)
             ]
 
         for (cmd,_,_,action) in self.cmd_actions:
@@ -166,4 +167,10 @@ class WatcherBot:
 
         person_shows : list[str] = list(map(lambda x: x.name,person.watching))
         ret_msg : str = 'Shows for %s: %s' % (person_name,', '.join(person_shows))
+        await self.send_message(update,context,ret_msg)
+
+    async def remove_show(self,update,context) -> None:
+        show_name : str = self.get_message_text(update).strip()
+        self.show_manager.remove_show(show_name)
+        ret_msg: str = 'Removed show %s' % show_name
         await self.send_message(update,context,ret_msg)

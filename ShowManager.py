@@ -80,6 +80,7 @@ class ShowManager:
         new_id : int = self.get_next_person_id()
         new_person : Person = Person(name=person_name,person_id=new_id)
         self.people.append(new_person)
+        self.save_to_csv()
         return new_person
 
     def get_show(self,show_name:str) -> Show | None:
@@ -88,6 +89,13 @@ class ShowManager:
                 return show 
         return None
 
+    def remove_show(self,show_name:str) -> None:
+        show : Show | None = self.get_show(show_name)
+        if show is None:
+            return 
+        self.shows.remove(show)
+        self.save_to_csv()
+
     def get_show_add(self,show_name:str) -> Show:
         show : Show | None = self.get_show(show_name)
         if show is not None:
@@ -95,6 +103,7 @@ class ShowManager:
         new_id : int = self.get_next_show_id()
         new_show : Show = Show(show_name,new_id)
         self.shows.append(new_show)
+        self.save_to_csv()
         return new_show
 
     def add_watcher(self,person_name:str,show_name:str) -> None:
@@ -103,8 +112,9 @@ class ShowManager:
 
         if show is None or person is None:
             return 
-
+        
         person.add_show(new_show = show)
+        self.save_to_csv()
 
     def remove_watcher(self,person_name:str,show_name:str) -> None:
         show : Show | None = self.get_show(show_name=show_name)
@@ -114,6 +124,7 @@ class ShowManager:
             return 
 
         person.remove_show(old_show=show)
+        self.save_to_csv()
 
 
     def get_watchers(self,show_name:str) -> list[Person] :

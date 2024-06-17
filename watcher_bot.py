@@ -103,7 +103,6 @@ class WatcherBot:
 
         self.show_manager.add_watcher(new_watcher,new_show)
         ret_msg : str = 'Added %s to show %s' % (new_watcher,new_show)
-        self.show_manager.save_to_csv()
         await self.send_message(update,context,ret_msg)
     
     async def remove_watcher(self,update,context) -> None:
@@ -117,7 +116,6 @@ class WatcherBot:
         new_watcher : str = msg_args[0].strip()
         new_show : str = msg_args[1].strip()
         self.show_manager.remove_watcher(new_watcher,new_show)
-        self.show_manager.save_to_csv()
         ret_msg : str = 'Removed %s from %s' % (new_watcher,new_show)
         await self.send_message(update,context,ret_msg)
 
@@ -146,7 +144,6 @@ class WatcherBot:
             return
         
         show.update_ep(ep_nr)
-        self.show_manager.save_to_csv()
         ret_msg:str = 'Updated show %s' %show_name
         await self.send_message(update,context,ret_msg)
 
@@ -154,7 +151,6 @@ class WatcherBot:
     async def add_show(self,update,context) -> None:
         show_name : str = self.get_message_text(update).strip()
         self.show_manager.get_show_add(show_name)
-        self.show_manager.save_to_csv()
         ret_msg : str = 'Added show %s' % show_name
         await self.send_message(update,context,ret_msg)
 

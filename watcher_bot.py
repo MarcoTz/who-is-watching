@@ -25,8 +25,8 @@ class WatcherBot:
                 ('add_watcher',     '$person;$show', 'add person watching show',                     self.add_watcher),
                 ('remove_watcher',  '$person;$show', 'remove person watching show',                  self.remove_watcher),
                 ('update_show',     '$show;$nr',     'update episode number for show',               self.update_show),
-                ('add_show',        '%show',         'add new show',                                 self.add_show),
-                ('show_shows',      '%person',       'show shows person is watching',                self.show_shows)
+                ('add_show',        '$show',         'add new show',                                 self.add_show),
+                ('show_shows',      '$person',       'show shows person is watching',                self.show_shows)
             ]
 
         for (cmd,_,_,action) in self.cmd_actions:

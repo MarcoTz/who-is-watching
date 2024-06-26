@@ -93,8 +93,11 @@ class WatcherBot:
             return
 
         show_strs : list[str] = list(map(lambda x: '%s (%s)' %(x.name,str(x.current_ep)),shows))
-        ret_template : str = 'Possible shows to watch with %s:\n%s\n\nCould not find %s'
-        ret_msg : str =  ret_template % (', '.join(watcher_names),'\n'.join(show_strs),','.join(not_found))
+        ret_template : str = 'Possible shows to watch with %s:\n%s'
+        ret_msg : str =  ret_template % (', '.join(watcher_names),'\n'.join(show_strs))
+        if len(not_found) > 0:
+            ret_msg += '\n\nCould not find %s' % ','.join(not_found)
+
         await self.send_message(update,context,ret_msg)
 
     async def add_watcher(self,update,context) -> None:

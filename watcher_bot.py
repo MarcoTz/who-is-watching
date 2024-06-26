@@ -27,6 +27,7 @@ class WatcherBot:
                 ('update_show',     '$show;$nr',     'update episode number for show',               self.update_show),
                 ('add_show',        '$show',         'add new show',                                 self.add_show),
                 ('show_shows',      '$person',       'show shows person is watching',                self.show_shows),
+                ('show_people',     '',              'show people',                                  self.show_people),
                 ('remove_show',     '$show',         'reove a show',                                 self.remove_show)
             ]
 
@@ -71,12 +72,13 @@ class WatcherBot:
             return
 
         watchers : list[str] = list(map(lambda x: x.strip(),watcher_str.split(', ')))
-
-
+        
         people_list : list[Person] = [] 
+        not_found : list[str] = []
         for watcher_name in watchers:
             watcher : Person | None = self.show_manager.get_person(watcher_name)
             if watcher is None:
+                not_found.append(watcher_name)
                 continue 
             people_list.append(watcher)
 
@@ -91,7 +93,8 @@ class WatcherBot:
             return
 
         show_strs : list[str] = list(map(lambda x: '%s (%s)' %(x.name,str(x.current_ep)),shows))
-        ret_msg : str = 'Possible shows to watch with %s:\n%s' % (', '.join(watcher_names),'\n'.join(show_strs))
+        ret_template : str = 'Possible shows to watch with %s:\n%s\n\nCould not find %s'
+        ret_msg : str =  ret_template % (', '.join(watcher_names),'\n'.join(show_strs),','.join(not_found))
         await self.send_message(update,context,ret_msg)
 
     async def add_watcher(self,update,context) -> None:
@@ -169,7 +172,12 @@ class WatcherBot:
             return
 
         person_shows : list[str] = list(map(lambda x: x.name,person.watching))
-        ret_msg : str = 'Shows for %s: %s' % (person_name,', '.join(person_shows))
+        ret_msg : str = 'Shows for %s: %s' % (person_name,'\n'.join(person_shows))
+        await self.send_message(update,context,ret_msg)
+
+    async def show_people(self,update,context) -> None:
+        people_names : list[str] = list(map(lambda x: x.name,self.show_manager.people))
+        ret_msg : str = 'All watching people:\n%s' % '\n'.join(people_names)
         await self.send_message(update,context,ret_msg)
 
     async def remove_show(self,update,context) -> None:

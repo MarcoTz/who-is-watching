@@ -89,13 +89,6 @@ class ShowManager:
                 return show 
         return None
 
-    def remove_show(self,show_name:str) -> None:
-        show : Show | None = self.get_show(show_name)
-        if show is None:
-            return 
-        self.shows.remove(show)
-        self.save_to_csv()
-
     def get_show_add(self,show_name:str) -> Show:
         show : Show | None = self.get_show(show_name)
         if show is not None:
@@ -106,9 +99,16 @@ class ShowManager:
         self.save_to_csv()
         return new_show
 
+    def remove_show(self,show_name:str) -> None:
+        show : Show | None = self.get_show(show_name)
+        if show is None:
+            return 
+        self.shows.remove(show)
+        self.save_to_csv()
+
     def add_watcher(self,person_name:str,show_name:str) -> None:
-        show    : Show   | None = self.get_show(show_name=show_name)
-        person  : Person | None = self.get_person(person_name=person_name)
+        show    : Show   | None = self.get_show_add(show_name=show_name)
+        person  : Person | None = self.get_person_add(person_name=person_name)
 
         if show is None or person is None:
             return 
@@ -117,8 +117,8 @@ class ShowManager:
         self.save_to_csv()
 
     def remove_watcher(self,person_name:str,show_name:str) -> None:
-        show : Show | None = self.get_show(show_name=show_name)
-        person : Person | None = self.get_person(person_name=person_name)
+        show : Show | None = self.get_show_add(show_name=show_name)
+        person : Person | None = self.get_person_add(person_name=person_name)
         
         if show is None or person is None:
             return 

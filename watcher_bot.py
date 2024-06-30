@@ -1,8 +1,7 @@
 from telegram.ext import Application,ApplicationBuilder,CommandHandler,ContextTypes
 from telegram import Update
-from ShowManager import ShowManager
-from Person import Person 
-from Show import Show
+from common.ShowManager import ShowManager
+from common.Show import Show
 
 def load_api_key() -> str:
     config_file_path = 'bot.cfg' 
@@ -72,33 +71,17 @@ class WatcherBot:
             return
 
         watchers : list[str] = list(map(lambda x: x.strip(),watcher_str.split(', ')))
+        shows : list[Show] = self.show_manager.get_possible(watchers)
         
-        people_list : list[Person] = [] 
-        not_found : list[str] = []
-        for watcher_name in watchers:
-            watcher : Person | None = self.show_manager.get_person(watcher_name)
-            if watcher is None:
-                not_found.append(watcher_name)
-                continue 
-            people_list.append(watcher)
-
-        if len(people_list) == 0:
-            ret_msg : str = 'Could not find people %s' % ', '.join(watchers)
-        shows : list[Show] = self.show_manager.get_possible_shows(people_list)
-
-        watcher_names : list[str] = list(map(lambda x: x.name,people_list))
         if len(shows) == 0:
-            ret_msg : str = 'No show to watch with %s ' % (', '.join(watcher_names))
-            await self.send_message(update,context,ret_msg)
-            return
+            ret_msg : str = 'No show to watch with %s' % ', '.join(watchers)
 
-        show_strs : list[str] = list(map(lambda x: '%s (%s)' %(x.name,str(x.current_ep)),shows))
-        ret_template : str = 'Possible shows to watch with %s:\n%s'
-        ret_msg : str =  ret_template % (', '.join(watcher_names),'\n'.join(show_strs))
-        if len(not_found) > 0:
-            ret_msg += '\n\nCould not find %s' % ','.join(not_found)
+        shows_strs : list[str] = list(map(lambda x: x.name,shows))
 
+        ret_msg : str = 'Shows to watch with %s:\n%s' % (', '.join(watchers),'\n'.join(shows_strs))
         await self.send_message(update,context,ret_msg)
+
+
 
     async def add_watcher(self,update,context) -> None:
         msg_content : str = self.get_message_text(update)
@@ -111,7 +94,7 @@ class WatcherBot:
         new_watcher : str = msg_args[0].strip()
         new_show : str = msg_args[1].strip()
 
-        self.show_manager.add_watcher(new_watcher,new_show)
+        self.show_manager.add_watcher_show(new_watcher,new_show)
         ret_msg : str = 'Added %s to show %s' % (new_watcher,new_show)
         await self.send_message(update,context,ret_msg)
     
@@ -125,7 +108,7 @@ class WatcherBot:
 
         new_watcher : str = msg_args[0].strip()
         new_show : str = msg_args[1].strip()
-        self.show_manager.remove_watcher(new_watcher,new_show)
+        self.show_manager.remove_watcher_show(new_watcher,new_show)
         ret_msg : str = 'Removed %s from %s' % (new_watcher,new_show)
         await self.send_message(update,context,ret_msg)
 
@@ -147,35 +130,23 @@ class WatcherBot:
             await self.send_message(update,context,ret_msg)
             return
 
-        show : Show | None = self.show_manager.get_show(show_name)
-        if show is None:
-            ret_msg : str = 'Cannot find show %s ' % show_name
-            await self.send_message(update,context,ret_msg)
-            return
-        
-        show.update_ep(ep_nr)
+        self.show_manager.update_show_episode(show_name,ep_nr)
         ret_msg:str = 'Updated show %s' %show_name
         await self.send_message(update,context,ret_msg)
 
 
     async def add_show(self,update,context) -> None:
         show_name : str = self.get_message_text(update).strip()
-        self.show_manager.get_show_add(show_name)
+        self.show_manager.add_show(show_name)
         ret_msg : str = 'Added show %s' % show_name
         await self.send_message(update,context,ret_msg)
 
     async def show_shows(self,update,context) -> None:
         person_name : str = self.get_message_text(update).strip()
-        person : Person | None = self.show_manager.get_person(person_name)
+        shows_list : list[Show] = self.show_manager.get_shows_person(person_name)
+        shows_strs : list[str] = list(map(lambda x: x.name,shows_list))
     
-        if person is None:
-            show_strs : list[str] =list(map(lambda x: '%s (%s)' % (x.name,str(x.current_ep)),self.show_manager.shows))
-            ret_msg : str = 'All shows:\n%s' % ('\n'.join(show_strs))
-            await self.send_message(update,context,ret_msg)
-            return
-
-        person_shows : list[str] = list(map(lambda x: x.name,person.watching))
-        ret_msg : str = 'Shows for %s: %s' % (person_name,'\n'.join(person_shows))
+        ret_msg : str = 'Shows for %s: %s' % (person_name,'\n'.join(shows_strs))
         await self.send_message(update,context,ret_msg)
 
     async def show_people(self,update,context) -> None:

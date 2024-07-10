@@ -1,5 +1,6 @@
 from telegram.ext import Application,ApplicationBuilder,CommandHandler,ContextTypes
 from telegram import Update
+from common.types import WatcherError,show_err
 from common.ShowManager import ShowManager
 from common.Show import Show
 
@@ -26,8 +27,8 @@ class WatcherBot:
                 ('update_show',     '$show;$nr',     'update episode number for show',               self.update_show),
                 ('add_show',        '$show',         'add new show',                                 self.add_show),
                 ('show_shows',      '$person',       'show shows person is watching',                self.show_shows),
-                ('show_people',     '',              'show people',                                  self.show_people),
-                ('remove_show',     '$show',         'reove a show',                                 self.remove_show)
+                ('show_people',     '',              'show all people',                              self.show_people),
+                ('remove_show',     '$show',         'remove a show',                                self.remove_show)
             ]
 
         for (cmd,_,_,action) in self.cmd_actions:
@@ -71,7 +72,13 @@ class WatcherBot:
             return
 
         watchers : list[str] = list(map(lambda x: x.strip(),watcher_str.split(', ')))
-        shows : list[Show] = self.show_manager.get_possible(watchers)
+        shows    : list[Show] | WatcherError = self.show_manager.get_possible(watchers)
+
+        match shows:
+            case WatcherError():
+                ret_msg : str = show_err(shows)
+                await self.send_message(update,context,ret_msg)
+                return
         
         if len(shows) == 0:
             ret_msg : str = 'No show to watch with %s' % ', '.join(watchers)
@@ -143,7 +150,12 @@ class WatcherBot:
 
     async def show_shows(self,update,context) -> None:
         person_name : str = self.get_message_text(update).strip()
-        shows_list : list[Show] = self.show_manager.get_shows_person(person_name)
+        shows_list : list[Show] | WatcherError = self.show_manager.get_shows_person(person_name)
+        match shows_list:
+            case WatcherError():
+                ret_msg : str = show_err(shows_list)
+                await self.send_message(update,context,ret_msg)
+                return 
         shows_strs : list[str] = list(map(lambda x: x.name,shows_list))
     
         ret_msg : str = 'Shows for %s: %s' % (person_name,'\n'.join(shows_strs))

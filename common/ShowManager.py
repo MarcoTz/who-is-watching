@@ -20,29 +20,34 @@ class ShowManager:
         save_people(self.people)
         save_groups(self.groups)
 
-    def get_person_by_name(self,person_name:str) -> Person | None:
+    def get_person_by_name(self,person_name:str) -> Person | WatcherError:
         for person in self.people:
             if person.name.lower().strip() == person_name.lower().strip():
                 return person
-        return None
+        return person_not_found(person_name) 
 
-    def get_show_by_name(self,show_name:str) -> Show | None:
+    def get_show_by_name(self,show_name:str) -> Show | WatcherError:
         for show in self.shows: 
             if show.name.lower().strip() == show_name.lower().strip():
                 return show
-        return None
+        return show_not_found(show_name)
 
-    def get_show_by_id(self,show_id:int) -> Show | None:
+    def get_show_by_id(self,show_id:int) -> Show | WatcherError:
         for show in self.shows:
             if show.show_id == show_id:
                 return show
-        return None 
+        return show_not_found('id: %s' % str(show_id)) 
 
-    def get_watchgroups_by_show_id(self,show_id:int) -> list[WatchGroup]:
+    def get_watchgroups_by_show_id(self,show_id:int) -> list[WatchGroup] | WatcherError:
+        show_exists : WatcherError | None = is_watcher_error(self.get_show_by_id(show_id))
+        if show_exists is not None:
+            return show_exists
+
         group_list : list[WatchGroup] = []
         for watch_group in self.groups:
             if watch_group.show_id == show_id:
                 group_list.append(watch_group)
+
         return group_list
 
     def get_watchgroups_by_people(self,watchers:list[Person]) -> list[WatchGroup]:
@@ -68,76 +73,92 @@ class ShowManager:
             next_id += 1
         return next_id
 
-    def get_possible(self,names_list:list[str]) -> list[Show]:
+    def get_possible(self,names_list:list[str]) -> list[Show] | WatcherError:
         watcher_list : list[Person] = [] 
         for name in names_list:
-            person : Person | None = self.get_person_by_name(name)
-            if person is None:
-                print('Could not find person %s' % name)
-                continue
-            watcher_list.append(person)
+            person : Person | WatcherError = self.get_person_by_name(name)
+            match person:
+                case Person():
+                    watcher_list.append(person)
+                case WatcherError():
+                    return person
+
 
         groups : list[WatchGroup] = self.get_watchgroups_by_people(watcher_list)
         show_list : list[Show] = [] 
         for watch_group in groups:
             show_id : int = watch_group.show_id
-            show : Show | None = self.get_show_by_id(show_id)
-            if show is None:
-                print('Could not find show with id %s' % show_id)
-                continue
-            show_list.append(show)
+            show : Show | WatcherError = self.get_show_by_id(show_id)
+            match show:
+                case Show():
+                    show_list.append(show)
+                case WatcherError():
+                    return show
 
         return show_list
 
-    def add_watcher_show(self,watcher_name:str,show_name:str) -> None:
-        maybe_person : Person | None = self.get_person_by_name(watcher_name)
-        if maybe_person is None: 
-            print('Could not find person %s ' % watcher_name)
-            return 
-        person : Person = maybe_person
+    def add_watcher_show(self,watcher_name:str,show_name:str) -> WatchGroup | WatcherError:
+        person : Person | WatcherError = self.get_person_by_name(watcher_name)
+        match person:
+            case WatcherError():
+                return person
 
-        maybe_show : Show | None = self.get_show_by_name(show_name)
-        if maybe_show is None:
-            print('Could not find show %s ' % show_name)
-            return 
-        show : Show = maybe_show
+        show : Show | WatcherError = self.get_show_by_name(show_name)
+        match show:
+            case WatcherError():
+                return show
         
-        watch_groups : list[WatchGroup] = self.get_watchgroups_by_show_id(show.show_id)
+        watch_groups : list[WatchGroup] | WatcherError = self.get_watchgroups_by_show_id(show.show_id)
+        match watch_groups:
+            case WatcherError():
+                return watch_groups
+
         for watch_group in watch_groups:
             watch_group.people_ids.append(person.person_id)
+
         self.save_all()
+        return watch_groups[0]
 
-    def remove_watcher_show(self,watcher_name:str,show_name:str) -> None:
-        maybe_person : Person | None = self.get_person_by_name(watcher_name)
-        if maybe_person is None: 
-            print('Could not find person %s ' % watcher_name)
-            return 
-        person : Person = maybe_person
+    def remove_watcher_show(self,watcher_name:str,show_name:str) -> None | WatcherError:
+        person : Person | WatcherError = self.get_person_by_name(watcher_name)
+        match person:
+            case WatcherError():
+                return person
 
-        maybe_show : Show | None = self.get_show_by_name(show_name)
-        if maybe_show is None:
-            print('Could not find show %s ' % show_name)
-            return 
-        show : Show = maybe_show
-        watch_groups : list[WatchGroup] = self.get_watchgroups_by_show_id(show.show_id)
+        show : Show | WatcherError = self.get_show_by_name(show_name)
+        match show:
+            case WatcherError():
+                return show
+        watch_groups : list[WatchGroup] | WatcherError = self.get_watchgroups_by_show_id(show.show_id)
+        match watch_groups: 
+            case WatcherError():
+                return watch_groups
+
         for watch_group in watch_groups:
             watch_group.people_ids.remove(person.person_id)
         self.save_all()
 
-    def update_show_episode(self,show_name:str,ep_nr:int) -> None:
-        maybe_show : Show | None = self.get_show_by_name(show_name)
-        if maybe_show is None:
-            print('Could not find show %s ' % show_name)
-            return 
-        show : Show = maybe_show
-        watch_groups : list[WatchGroup] = self.get_watchgroup_by_show_id(show.show_id)
+    def update_show_episode(self,show_name:str,ep_nr:int) -> None | WatcherError:
+        show : Show | WatcherError = self.get_show_by_name(show_name)
+        match show:
+            case WatcherError():
+                return show
+
+        watch_groups : list[WatchGroup] | WatcherError = self.get_watchgroups_by_show_id(show.show_id)
+        match watch_groups:
+            case WatcherError():
+                return watch_groups 
+
         for watch_group in watch_groups:
             watch_group.episode_nr = ep_nr
         self.save_all()
 
-    def add_show(self,show_name:str) -> None:
-        if self.get_show_by_name(show_name) is not None:
-            return
+    def add_show(self,show_name:str) -> None | WatcherError:
+        show : Show | WatcherError = self.get_show_by_name(show_name)
+        match show: 
+            case Show():
+                return show_exists(show_name)
+
         show_id : int = self.get_next_show_id()
         new_show_info : ShowInfo = { 
                                     'show_id':show_id,
@@ -147,32 +168,36 @@ class ShowManager:
         self.shows.append(new_show)
         self.save_all()
 
-    def get_shows_person(self,person_name:str) -> list[Show]:
+    def get_shows_person(self,person_name:str) -> list[Show] | WatcherError:
         shows_list : list[Show] = []
-        maybe_person : Person | None = self.get_person_by_name(person_name)
-        if maybe_person is None:
-            print('Could not find person %s' % person_name)
-            return []
+        person : Person | WatcherError = self.get_person_by_name(person_name)
+        match person:
+            case WatcherError():
+                return person
+
         
-        person : Person = maybe_person
         person_groups : list[WatchGroup] = self.get_watchgroups_by_person(person)
         shows_list : list[Show] = []
         for watch_group in person_groups:
-            maybe_show : Show | None = self.get_show_by_id(watch_group.show_id)
-            if maybe_show is None:
-                print('Could not find show with id %s' % watch_group.show_id)
-                continue
-            shows_list.append(maybe_show)
+            show : Show | WatcherError = self.get_show_by_id(watch_group.show_id)
+            match show:
+                case WatcherError():
+                    return show
+            shows_list.append(show)
 
         return shows_list
 
-    def remove_show(self,show_name:str) -> None:
-        maybe_show : Show | None = self.get_show_by_name(show_name)
-        if maybe_show is None:
-            return 
-        show : Show = maybe_show
+    def remove_show(self,show_name:str) -> None | WatcherError:
+        show : Show | WatcherError = self.get_show_by_name(show_name)
+        match show:
+            case WatcherError():
+                return show
 
-        show_groups : list[WatchGroup] = self.get_watchgroups_by_show_id(show.show_id)
+        show_groups : list[WatchGroup] | WatcherError = self.get_watchgroups_by_show_id(show.show_id)
+        match show_groups:
+            case WatcherError():
+                return show_groups
+
         for show_group in show_groups:
             self.groups.remove(show_group)
 

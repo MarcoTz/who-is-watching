@@ -1,4 +1,5 @@
 from typing import TypedDict 
+from enum import Enum 
 
 class ShowInfo(TypedDict):
     show_id   : int
@@ -37,4 +38,55 @@ def coalesce_group_info(json_dict) -> GroupInfo:
             'episode_nr' : int(json_dict['episode_nr'])
             }
     return info_dict
+
+class ErrorType(Enum):
+    PERSON_NOT_FOUND = 1
+    SHOW_NOT_FOUND = 2
+    GROUP_NOT_FOUND = 3 
+    SHOW_EXISTS = 4 
+
+all_error_types : list[ErrorType] = [ErrorType.PERSON_NOT_FOUND, 
+                             ErrorType.SHOW_NOT_FOUND,
+                             ErrorType.GROUP_NOT_FOUND,
+                             ErrorType.SHOW_EXISTS]
+
+class WatcherError(TypedDict):
+    error_type : ErrorType
+    error_message : str
+
+def show_err(err:WatcherError) -> str:
+    match err['error_type']:
+        case ErrorType.PERSON_NOT_FOUND:
+            return 'Could not find person\n%s' % err['error_message']
+        case ErrorType.SHOW_NOT_FOUND:
+            return 'Could not find show\n%s' % err['error_message']
+        case ErrorType.GROUP_NOT_FOUND:
+            return 'Could not find watch group\n%s' % err['error_message']
+        case ErrorType.SHOW_EXISTS:
+            return 'Show already exists\n%s' % err['error_message']
+
+def person_not_found(msg:str) -> WatcherError:
+    return {
+      'error_type':ErrorType.PERSON_NOT_FOUND,
+      'error_message':msg
+      }
+
+def show_not_found(msg:str) -> WatcherError:
+    return {
+      'error_type':ErrorType.SHOW_NOT_FOUND,
+      'error_message':msg
+    }
+
+def show_exists(msg:str) -> WatcherError:
+    return {
+      'error_type':ErrorType.SHOW_EXISTS,
+      'error_message':msg
+      }
+
+def is_watcher_error(maybe_err) -> WatcherError | None:
+    if 'error_type' not in maybe_err:
+        return None 
+    if ('error_message' in maybe_err) and maybe_err['error_type'] in all_error_types:
+        return maybe_err
+    return None
 

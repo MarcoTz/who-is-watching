@@ -26,13 +26,15 @@ def coalesce_person_info(json_dict) -> PersonInfo:
 
 
 class GroupInfo(TypedDict):
-    show_id : int
+    group_id   : int
+    show_id    : int
     people_ids : list[int]
     episode_nr : int
 
 def coalesce_group_info(json_dict) -> GroupInfo:
     people_ids : list[int] = list(map(lambda x:int(x),list(json_dict['people_ids'])))
     info_dict : GroupInfo = {
+            'group_id'   : int(json_dict['group_id']),
             'show_id'    : int(json_dict['show_id']),
             'people_ids' : people_ids,
             'episode_nr' : int(json_dict['episode_nr'])
@@ -44,11 +46,15 @@ class ErrorType(Enum):
     SHOW_NOT_FOUND = 2
     GROUP_NOT_FOUND = 3 
     SHOW_EXISTS = 4 
+    NO_GROUP_SHOW = 5 
+    PERSON_NOT_IN_GROUP = 6
 
 all_error_types : list[ErrorType] = [ErrorType.PERSON_NOT_FOUND, 
                              ErrorType.SHOW_NOT_FOUND,
                              ErrorType.GROUP_NOT_FOUND,
-                             ErrorType.SHOW_EXISTS]
+                             ErrorType.SHOW_EXISTS,
+                             ErrorType.NO_GROUP_SHOW,
+                            ErrorType.PERSON_NOT_IN_GROUP]
 
 class WatcherError(TypedDict):
     error_type : ErrorType
@@ -64,6 +70,10 @@ def show_err(err:WatcherError) -> str:
             return 'Could not find watch group\n%s' % err['error_message']
         case ErrorType.SHOW_EXISTS:
             return 'Show already exists\n%s' % err['error_message']
+        case ErrorType.NO_GROUP_SHOW:
+            return 'No group for show\n%s' % err['error_message']
+        case ErrorType.PERSON_NOT_IN_GROUP:
+            return 'Person not found in watchgroup\n%s' % err['error_message']
 
 def person_not_found(msg:str) -> WatcherError:
     return {
@@ -77,9 +87,26 @@ def show_not_found(msg:str) -> WatcherError:
       'error_message':msg
     }
 
+def group_not_found(msg:str) -> WatcherError:
+    return {
+      'error_type':ErrorType.GROUP_NOT_FOUND,
+      'error_message':msg
+      }
+
+def no_show_for_group(msg:str) -> WatcherError:
+    return {
+      'error_type':ErrorType.NO_GROUP_SHOW,
+      'error_message':msg
+    }
+
 def show_exists(msg:str) -> WatcherError:
     return {
       'error_type':ErrorType.SHOW_EXISTS,
+      'error_message':msg
+      }
+def not_in_watchgroup(msg:str) -> WatcherError:
+    return {
+      'error_type':ErrorType.PERSON_NOT_IN_GROUP,
       'error_message':msg
       }
 

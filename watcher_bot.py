@@ -22,9 +22,9 @@ class WatcherBot:
         self.cmd_actions = [
                 ('help',            '',              'show help message',                            self.get_help),
                 ('possible_shows',  '$people',       'get list of possible shows to watch',          self.get_possible),
-                ('add_watcher',     '$person;$show', 'add person watching show',                     self.add_watcher),
-                ('remove_watcher',  '$person;$show', 'remove person watching show',                  self.remove_watcher),
-                ('update_show',     '$show;$nr',     'update episode number for show',               self.update_show),
+                ('add_watcher',     '$person;$show[;$group]', 'add person watching show to group (default 0)',                     self.add_watcher),
+                ('remove_watcher',  '$person;$show[;$group]', 'remove person watching show from group (default first)',            self.remove_watcher),
+                ('update_show',     '$show;$nr[;$group]',     'update episode number for show for gropu (default 0)',               self.update_show),
                 ('add_show',        '$show',         'add new show',                                 self.add_show),
                 ('show_shows',      '$person',       'show shows person is watching',                self.show_shows),
                 ('show_people',     '',              'show all people',                              self.show_people),
@@ -93,29 +93,48 @@ class WatcherBot:
     async def add_watcher(self,update,context) -> None:
         msg_content : str = self.get_message_text(update)
         msg_args : list[str] = msg_content.split(';')
-        if len(msg_args) != 2:
+        if len(msg_args) < 2:
             ret_msg : str = 'Malformed command, please try again'
             await self.send_message(update,context,ret_msg)
             return
         
         new_watcher : str = msg_args[0].strip()
         new_show : str = msg_args[1].strip()
+        group_id : int | None = None
+        if len(msg_args) > 2:
+            group_id : int | None = int(msg_args[2].strip())
 
-        self.show_manager.add_watcher_show(new_watcher,new_show)
+        add_res : WatcherError | None = self.show_manager.add_watcher_show(new_watcher,new_show,group_id)
+        match add_res: 
+            case WatcherError():
+                ret_msg : str = show_err(add_res)
+                await self.send_message(update,context,ret_msg)
+                return
+
         ret_msg : str = 'Added %s to show %s' % (new_watcher,new_show)
         await self.send_message(update,context,ret_msg)
     
     async def remove_watcher(self,update,context) -> None:
         msg_content : str = self.get_message_text(update)
         msg_args : list[str] = msg_content.split(';')
-        if len(msg_args) != 2:
+        if len(msg_args) < 2:
             ret_msg : str = 'Malformed command, please try again'
             await self.send_message(update,context,ret_msg)
             return 
 
         new_watcher : str = msg_args[0].strip()
         new_show : str = msg_args[1].strip()
-        self.show_manager.remove_watcher_show(new_watcher,new_show)
+        group_id : int | None = None
+        if len(msg_args) > 2: 
+            group_id : int | None = int(msg_args[2].strip())
+
+        rem_res : WatcherError | None = self.show_manager.remove_watcher_show(new_watcher,new_show,group_id)
+        match rem_res:
+            case WatcherError():
+                ret_msg : str = show_err(rem_res)
+                await self.send_message(update,context,ret_msg)
+                return
+
         ret_msg : str = 'Removed %s from %s' % (new_watcher,new_show)
         await self.send_message(update,context,ret_msg)
 
@@ -137,14 +156,26 @@ class WatcherBot:
             await self.send_message(update,context,ret_msg)
             return
 
-        self.show_manager.update_show_episode(show_name,ep_nr)
+        update_res : WatcherError | None = self.show_manager.update_show_episode(show_name,ep_nr)
+        match update_res:
+            case WatcherError():
+                ret_msg : str = show_err(update_res)
+                await self.send_message(update,context,ret_msg)
+                return 
+
         ret_msg:str = 'Updated show %s' %show_name
         await self.send_message(update,context,ret_msg)
 
 
     async def add_show(self,update,context) -> None:
         show_name : str = self.get_message_text(update).strip()
-        self.show_manager.add_show(show_name)
+        add_res : WatcherError | None = self.show_manager.add_show(show_name)
+        match add_res: 
+            case WatcherError():
+                ret_msg : str = show_err(add_res)
+                await self.send_message(update,context,ret_msg)
+                return 
+
         ret_msg : str = 'Added show %s' % show_name
         await self.send_message(update,context,ret_msg)
 
@@ -168,6 +199,11 @@ class WatcherBot:
 
     async def remove_show(self,update,context) -> None:
         show_name : str = self.get_message_text(update).strip()
-        self.show_manager.remove_show(show_name)
+        rem_res : WatcherError | None = self.show_manager.remove_show(show_name)
+        match rem_res:
+            case WatcherError():
+                ret_msg : str = show_err(rem_res)
+                await self.send_message(update,context,ret_msg)
+                return
         ret_msg: str = 'Removed show %s' % show_name
         await self.send_message(update,context,ret_msg)

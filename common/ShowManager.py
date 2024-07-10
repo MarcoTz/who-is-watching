@@ -50,6 +50,14 @@ class ShowManager:
 
         return group_list
 
+    def get_watchgroup_by_id(self,group_id:int) -> WatchGroup | WatcherError:
+        for watch_group in self.groups:
+            if watch_group.group_id == group_id:
+                return watch_group
+
+        return group_not_found('id: %s' % str(group_id))
+
+
     def get_watchgroups_by_people(self,watchers:list[Person]) -> list[WatchGroup]:
         people_ids : set[int] = set(map(lambda x: x.person_id,watchers))
         group_list : list[WatchGroup] = []
@@ -97,7 +105,7 @@ class ShowManager:
 
         return show_list
 
-    def add_watcher_show(self,watcher_name:str,show_name:str) -> WatchGroup | WatcherError:
+    def add_watcher_show(self,watcher_name:str,show_name:str,group_id:int | None = None) -> None | WatcherError:
         person : Person | WatcherError = self.get_person_by_name(watcher_name)
         match person:
             case WatcherError():
@@ -107,19 +115,27 @@ class ShowManager:
         match show:
             case WatcherError():
                 return show
+
+        watch_group : WatchGroup
+        if group_id is None:
+            groups : list[WatchGroup] | WatcherError = self.get_watchgroups_by_show_id(show.show_id)
+            match groups: 
+                case WatcherError():
+                    return groups
+            if len(groups) == 0:
+                return no_show_for_group('show: %s' % (show.name))
+            watch_group = groups[0]
+        else:
+            maybe_watch_group : WatchGroup | WatcherError = self.get_watchgroup_by_id(group_id)
+            match maybe_watch_group:
+                case WatcherError():
+                    return maybe_watch_group
+            watch_group = maybe_watch_group
+        watch_group.people_ids.append(person.person_id)
         
-        watch_groups : list[WatchGroup] | WatcherError = self.get_watchgroups_by_show_id(show.show_id)
-        match watch_groups:
-            case WatcherError():
-                return watch_groups
-
-        for watch_group in watch_groups:
-            watch_group.people_ids.append(person.person_id)
-
         self.save_all()
-        return watch_groups[0]
 
-    def remove_watcher_show(self,watcher_name:str,show_name:str) -> None | WatcherError:
+    def remove_watcher_show(self,watcher_name:str,show_name:str,group_id:int | None = None) -> None | WatcherError:
         person : Person | WatcherError = self.get_person_by_name(watcher_name)
         match person:
             case WatcherError():
@@ -129,14 +145,29 @@ class ShowManager:
         match show:
             case WatcherError():
                 return show
-        watch_groups : list[WatchGroup] | WatcherError = self.get_watchgroups_by_show_id(show.show_id)
-        match watch_groups: 
-            case WatcherError():
-                return watch_groups
 
-        for watch_group in watch_groups:
-            watch_group.people_ids.remove(person.person_id)
+        watch_group : WatchGroup
+        if group_id is None:
+            watch_groups : list[WatchGroup] | WatcherError = self.get_watchgroups_by_show_id(show.show_id)
+            match watch_groups: 
+                case WatcherError():
+                    return watch_groups
+            if len(watch_groups) == 0:
+                return no_show_for_group('show: %s' % (show.name))
+            watch_group = watch_groups[0]
+        else:
+            maybe_watch_group : WatchGroup | WatcherError = self.get_watchgroup_by_id(group_id)
+            match maybe_watch_group:
+                case WatcherError():
+                    return maybe_watch_group
+            watch_group = maybe_watch_group
+
+        if person.person_id not in watch_group.people_ids:
+            return not_in_watchgroup('Person %s, for show %s' % (person.name,show.name))
+
+        watch_group.people_ids.remove(person.person_id)
         self.save_all()
+
 
     def update_show_episode(self,show_name:str,ep_nr:int) -> None | WatcherError:
         show : Show | WatcherError = self.get_show_by_name(show_name)

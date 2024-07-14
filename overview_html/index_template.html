@@ -3,11 +3,25 @@
   <head>
     <title>Who is Watching</title>
     <link rel="stylesheet" href="main.css">
+    <script>
+      show_names = [{{-show_names-}}];
+      function roll_show(){
+        show_div = document.getElementById("random_show_div");
+        new_show = show_names[Math.floor(Math.random()*show_names.length)];
+        show_div.innerHTML = new_show;
+      }
+    </script>
   </head>
   <body>
     <h1>Ongoing Shows</h1>
     <div id="shows_container">
       {{-shows_list-}}
+    </div>
+    <h1>Random Show</h1>
+    <div id="random_show_container">
+      <button onclick="roll_show()">Get random show</button>
+      <br/>
+      <div id="random_show_div"></div>
     </div>
   </body>
 </html>

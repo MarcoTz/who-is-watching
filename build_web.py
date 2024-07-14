@@ -36,9 +36,8 @@ def render_group(group : WatchGroup, shows_list:list[Show],people_list:list[Pers
         return ''
 
     group_people : list[Person] = get_people_group(group,people_list)
-    people_str : str = ''
-    for person in group_people:
-        people_str += person.name + '<br/>'
+    people_names : list[str] = list(map(lambda x:x.name,group_people))
+    people_str : str = ', '.join(people_names)
 
     return group_div_template % (group_show.name,group.episode_nr,people_str)
 
@@ -52,11 +51,14 @@ if __name__=='__main__':
     index_template : jinja2.Template = get_jinja_template()
 
     shows_list : list[Show]         = load_shows()
+    shows_names : list[str] = list(map(lambda x:'"%s"' % x.name,shows_list))
     people_list : list[Person]      = load_people()
     groups_list : list[WatchGroup]  = load_groups()
 
     group_strs : list[str] = list(map(lambda x:render_group(x,shows_list,people_list),groups_list))
 
-    info_dict = {'shows_list':'\n'.join(group_strs)}
+    info_dict : dict[str,str] = {
+            'shows_list':'\n'.join(group_strs),
+            'show_names':', '.join(shows_names)}
     html_out : str = index_template.render(info_dict)
     write_html(html_out)

@@ -6,7 +6,7 @@ class WatchGroup:
     episode_nr : int 
 
     def __init__(self,json_dict:GroupInfo):
-        self.group_id   : int = json_dict['group_id']
+        self.group_id   : int       = json_dict['group_id']
         self.show_id    : int       = json_dict['show_id']
         self.people_ids : list[int] = json_dict['people_ids']
         self.episode_nr : int       = json_dict['episode_nr']

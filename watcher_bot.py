@@ -2,6 +2,7 @@ from telegram.ext import Application,ApplicationBuilder,CommandHandler,ContextTy
 from telegram import Update
 from common.types import WatcherError,show_err
 from common.ShowManager import ShowManager
+from common.Person import Person
 from common.Show import Show
 
 def load_api_key() -> str:
@@ -28,7 +29,8 @@ class WatcherBot:
                 ('add_show',        '$show',         'add new show',                                 self.add_show),
                 ('show_shows',      '$person',       'show shows person is watching',                self.show_shows),
                 ('show_people',     '',              'show all people',                              self.show_people),
-                ('remove_show',     '$show',         'remove a show',                                self.remove_show)
+                ('remove_show',     '$show',         'remove a show',                                self.remove_show),
+                ('recommend_show',  '$people', 'recommend a show for given people', self.recommend_show)
             ]
 
         for (cmd,_,_,action) in self.cmd_actions:
@@ -207,3 +209,28 @@ class WatcherBot:
                 return
         ret_msg: str = 'Removed show %s' % show_name
         await self.send_message(update,context,ret_msg)
+
+    async def recommend_show(self,update,context) -> None:
+        people_names : list[str] = self.get_message_text(update).split(',')
+        people_names = list(map(lambda x: x.strip(),people_names))
+        people : list[Person] = []
+        for person_name in people_names:
+            maybe_person : Person | WatcherError = self.show_manager.get_person_by_name(person_name)
+            match maybe_person:
+                case WatcherError():
+                    ret_msg : str = show_err(maybe_person)
+                    await self.send_message(update,context,ret_msg)
+                    return
+            people.append(maybe_person)
+
+        people_ids : list[int] = list(map(lambda x:x.person_id,people))
+        recommended_show : Show | WatcherError = self.show_manager.recommend_show(people_ids)
+        match recommended_show: 
+            case WatcherError():
+                ret_msg : str = show_err(recommended_show)
+                await self.send_message(update,context,ret_msg)
+                return
+            case Show():
+                ret_msg : str = 'Recommended Show for %s:\n%s' % (', '.join(people_names),recommended_show.name)
+                await self.send_message(update,context,ret_msg)
+                return

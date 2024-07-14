@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Who is Watching</title>
+    <link rel="stylesheet" href="main.css">
+    <script>
+      show_names = ["Hunter x Hunter", "The Apothecary Diaries", "The Ancient Magus' Bride", "The New Gate", "One Piece", "Kill la Kill", "Jojo's Bizzare Adventure", "GTO: Great Teacher Onizuka", "Bartender Glass of God", "Fullmetal Alchemist", "Fairy Tail", "Bleach", "A Certain Magical Index", "Monster", "Fullmetal Alchemist Brotherhood", "Gintama", "Sangatsu No Lion", "Black Lagoon", "Mirai Nikki", "Haikyuu", "Akame Ga Kill", "Aoashi", "Shinsekai Yori", "Moriarty The Patriot", "Dungeon Meshi", "Orange", "Natsume", "Rascal Dreams of Bunny Girl Senpai", "Sword Art Online Alternative: Gungale Online", "Wind breaker", "Bungo Stray Dogs", "Campfire Cooking In Another World", "The Dangers In My Heart", "Familiar of Zero", "Mysterious Disappearances", "K", "Romantic Killer", "Eightysix", "Eden of the East", "Kaiju No. 8", "Neon Genesis Evangelion", "Digimon Adventure", "Zom100 Bucket List of the Dead"];
+      function roll_show(){
+        show_div = document.getElementById("random_show_div");
+        new_show = show_names[Math.floor(Math.random()*show_names.length)];
+        show_div.innerHTML = new_show;
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Ongoing Shows</h1>
+    <div id="shows_container"><div class="group_item"><div class="group_header">Hunter x Hunter (136)</div><br/></br>Sera, Kordan, Bernhard, Jakob, Tzschentke</div>
+<div class="group_item"><div class="group_header">The Apothecary Diaries (12)</div><br/></br>Sera, David, Tzschentke</div>
+<div class="group_item"><div class="group_header">The Ancient Magus' Bride (5)</div><br/></br>Sera, Kordan, Tzschentke</div>
+<div class="group_item"><div class="group_header">The New Gate (9)</div><br/></br>Sera, David, Tzschentke</div>
+<div class="group_item"><div class="group_header">One Piece (1105)</div><br/></br>Sera, Tzschentke</div>
+<div class="group_item"><div class="group_header">Kill la Kill (20)</div><br/></br>Sera, Tzschentke</div>
+<div class="group_item"><div class="group_header">Jojo's Bizzare Adventure (9)</div><br/></br>Sera, David, Kordan, Bernhard, Tzschentke</div>
+<div class="group_item"><div class="group_header">GTO: Great Teacher Onizuka (5)</div><br/></br>Sera, David, Tzschentke</div>
+<div class="group_item"><div class="group_header">Bartender Glass of God (1)</div><br/></br>Sera, Tzschentke</div>
+<div class="group_item"><div class="group_header">Kaiju No. 8 (4)</div><br/></br>Sera, David, Kordan, Bernhard, Tzschentke</div>
+<div class="group_item"><div class="group_header">Zom100 Bucket List of the Dead (2)</div><br/></br>Sera, David, Kordan, Tzschentke</div>
+<div class="group_item"><div class="group_header">A Certain Magical Index (4)</div><br/></br>Sera, David, Kordan, Tzschentke</div></div>
+    <h1>Random Show</h1>
+    <div id="random_show_container">
+      <button onclick="roll_show()">Get random show</button>
+      <br/>
+      <div id="random_show_div"></div>
+    </div>
+  </body>
+</html>

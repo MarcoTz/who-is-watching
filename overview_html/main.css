@@ -16,6 +16,14 @@ h1 {
   text-align:center;
 }
 
+button {
+  background:var(--fg-color);
+  border-radius:10%;
+  border:none;
+  color:var(--bg-color-even);
+  margin:auto;
+}
+
 #shows_container{
   display:flex;
   flex-wrap:wrap;
@@ -52,6 +60,9 @@ h1 {
   width:fit-content;
   padding:2em;
   margin:auto;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
 }
 
 #random_show_div{

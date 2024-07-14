@@ -37,9 +37,24 @@
    "people_ids":[0,1,5],
    "episode_nr":5
  },
- { "gropu_id":8,
+ { "group_id":8,
    "show_id":8,
    "people_ids":[0,5],
    "episode_nr":1
+ },
+ {"group_id":9,
+   "show_id":39,
+   "people_ids":[0,1,2,3,5],
+   "episode_nr":4
+ },
+ {"group_id":10,
+   "show_id":42,
+   "people_ids":[0,1,2,5],
+   "episode_nr":2
+ },
+ {"group_id":11,
+   "show_id":12,
+   "people_ids":[0,1,2,5],
+   "episode_nr":4
  }
 ]

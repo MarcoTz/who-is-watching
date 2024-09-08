@@ -1,0 +1,9 @@
+[Unit] 
+Description="Who Is Watching Telegram Bot Service"
+
+[Service]
+ExecStart=python /home/rooxo/who-is-watching/watcher_bot.py
+Restart=always
+
+[Install]
+WantedBy=default.target

@@ -17,7 +17,7 @@ func GetAllShows(db *sql.DB) ([]types.Show,error){
     var next_name string 
     err = res.Scan(&next_id,&next_name)
     if err != nil { return []types.Show{},err }
-    new_show := types.NewShow(next_id,next_name)
+    new_show := types.Show{Id:next_id,Name:next_name}
     shows = append(shows,new_show)
   }
 
@@ -35,7 +35,7 @@ func GetShowById(show_id int, db *sql.DB) (*types.Show, error) {
     err = res.Scan(&name)
     if err != nil { return nil,err }
 
-    show := types.NewShow(show_id,name)
+    show := types.Show{Id:show_id,Name:name}
     return &show,nil
 }
 
@@ -49,7 +49,7 @@ func GetShowByName(name string, db *sql.DB) (*types.Show,error){
   err = res.Scan(&id) 
   if err!=nil { return nil,err}
 
-  show := types.NewShow(id,name)
+  show := types.Show{Id:id,Name:name}
   return &show,nil
 
   

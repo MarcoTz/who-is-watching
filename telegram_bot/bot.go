@@ -4,10 +4,11 @@ import (
   "context"
   "os/signal"
   "os"
+  "database/sql"
+  "strings"
   "bytes"
   "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-  "strings"
 )
 
 func loadConfig() (string,error) {
@@ -17,14 +18,15 @@ func loadConfig() (string,error) {
   return api_key ,nil
 }
 
-func RunBot() error {
+func RunBot(db *sql.DB) error {
   token,err := loadConfig()
   if err != nil { 
     return err 
   }
 
   opts := []bot.Option{bot.WithDefaultHandler(handler),}
-  ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+  bg, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+  ctx := context.WithValue(bg,"database",db)
   defer cancel()
 
   b, err := bot.New(token,opts...)

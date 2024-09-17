@@ -1,13 +1,18 @@
 package main
 
 import (
+  "rooxo/whoiswatching/telegram_bot"
 	"fmt"
-	"rooxo/whoiswatching/types"
-  "rooxo/whoiswatching/database"
+//	"rooxo/whoiswatching/types"
+//  "rooxo/whoiswatching/database"
 )
 
 func main() {
-  db,err := database.ConnectDB("./watchers.db")
+  err := telegram_bot.RunBot()
+  if err != nil {
+    fmt.Printf("%s",err)
+  }
+/*  db,err := database.ConnectDB("./watchers.db")
   if err != nil {
     fmt.Printf("Could not initialize database: %s",err)
     return 
@@ -20,6 +25,6 @@ func main() {
 
   rand_show := types.RandomShow(shows)
   fmt.Printf("random show: %s",rand_show.Name)
-
+*/
 
 }

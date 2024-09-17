@@ -6,6 +6,25 @@ import (
   "database/sql"
 )
 
+func GetAllShows(db *sql.DB) ([]types.Show,error){
+  query := "SELECT rowid,name FROM shows"
+  res, err := db.Query(query)
+  if err!=nil { return []types.Show{},err }
+
+  shows := make([]types.Show,0)
+  for res.Next() {
+    var next_id int 
+    var next_name string 
+    err = res.Scan(&next_id,&next_name)
+    if err != nil { return []types.Show{},err }
+    new_show := types.NewShow(next_id,next_name)
+    shows = append(shows,new_show)
+  }
+
+  return shows,nil
+
+}
+
 func GetShowById(show_id int, db *sql.DB) (*types.Show, error) {
     query := fmt.Sprintf("SELECT name FROM shows WHERE rowid=%d",show_id);
     res, err := db.Query(query)
@@ -17,7 +36,7 @@ func GetShowById(show_id int, db *sql.DB) (*types.Show, error) {
     if err != nil { return nil,err }
 
     show := types.NewShow(show_id,name)
-    return show,nil
+    return &show,nil
 }
 
 func GetShowByName(name string, db *sql.DB) (*types.Show,error){
@@ -31,7 +50,7 @@ func GetShowByName(name string, db *sql.DB) (*types.Show,error){
   if err!=nil { return nil,err}
 
   show := types.NewShow(id,name)
-  return show,nil
+  return &show,nil
 
   
 }

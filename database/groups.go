@@ -10,6 +10,8 @@ func GetAllGroups(db *sql.DB) ([]types.WatchGroup,error){
   query := "SELECT rowid,show_id,current_ep FROM watchgroups"
   res, err := db.Query(query)
   if err != nil { return []types.WatchGroup{},err }
+  defer res.Close()
+
 
   groups := make([]types.WatchGroup,0)
   for res.Next() {
@@ -46,9 +48,9 @@ func GetAllGroups(db *sql.DB) ([]types.WatchGroup,error){
 }
 
 func AddWatchGroup(show_id int, users []int, db *sql.DB) (int, error){
-  exists, err := showExists(show_id,db)
+  exists, err := ShowIdExists(show_id,db)
   if !exists{
-    return 0,&ShowIdNotFoundErr{show_id:show_id}
+    return 0,&ShowIdDoesNotExist{show_id:show_id}
   }
   if err!=nil{
     return 0,err
@@ -64,16 +66,18 @@ func AddWatchGroup(show_id int, users []int, db *sql.DB) (int, error){
   id_query := "SELECT MAX(row_id) from watchgroups";
   res,err := db.Query(id_query)
   if err!=nil {return 0,err}
+  defer res.Close() 
+
   res.Next()
   err = res.Scan(&group_id)
   if err!=nil { return 0,err}
   
 
-  for _,user_id := range users{
-    exists,err = WatcherIdExists(user_id,db)
+  for _,watcher_id := range users{
+    exists,err = WatcherIdExists(watcher_id,db)
     if err !=nil { return 0,err} 
-    if !exists { return 0,&UserIdNotFoundErr{user_id:user_id} }
-    insert_st := fmt.Sprintf("INSERT INTO watchers_groups (watcher_id,group_id) values (%d,%d)",group_id,user_id)
+    if !exists { return 0,&WatcherIdDoesNotExistErr{watcher_id:watcher_id} }
+    insert_st := fmt.Sprintf("INSERT INTO watchers_groups (watcher_id,group_id) values (%d,%d)",group_id,watcher_id)
     _,err = db.Exec(insert_st)
     if err != nil { return 0,err}
   }

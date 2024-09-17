@@ -8,11 +8,13 @@ import (
 
 func WatcherIdExists(watcher_id int, db *sql.DB) (bool, error) {
 
-  query := fmt.Sprintf("SELECT count(*) from watchers where rowid=%d", watcher_id)
+  query := fmt.Sprintf("SELECT count(*) FROM watchers where rowid=%d", watcher_id)
   res, err := db.Query(query)
   if err != nil {
     return false, err
   }
+  defer res.Close()
+
 
   res.Next()
   var num int
@@ -20,17 +22,17 @@ func WatcherIdExists(watcher_id int, db *sql.DB) (bool, error) {
   if err != nil {
     return false, err
   }
-  res.Close()
-
+  
   return num > 0, nil
 }
 
 func WatcherNameExists(watcher_name string, db *sql.DB) (bool, error) {
-  query := fmt.Sprintf("SELECT count(*) from watchers where name='%s'", watcher_name)
+  query := fmt.Sprintf("SELECT count(*) FROM watchers where name='%s'", watcher_name)
   res, err := db.Query(query)
   if err != nil {
     return false, err
   }
+  defer res.Close()
 
   res.Next()
   var num int
@@ -38,14 +40,19 @@ func WatcherNameExists(watcher_name string, db *sql.DB) (bool, error) {
   if err != nil {
     return false, err
   }
-  res.Close()
 
   return num > 0, nil
 }
 
 func GetWatcherById(watcher_id int, db *sql.DB) (*types.Watcher, error) {
-  query := fmt.Sprintf("SELECT name from watchers where rowid=%d", watcher_id)
+  exists, err := WatcherIdExists(watcher_id,db)
+  if err != nil { return nil,err}
+  if !exists {return nil,&WatcherIdDoesNotExistErr{watcher_id:watcher_id}}
+
+  query := fmt.Sprintf("SELECT name FROM watchers where rowid=%d", watcher_id)
   res, err := db.Query(query)
+  defer res.Close()
+
   if err != nil {
     return nil, err
   }
@@ -56,19 +63,38 @@ func GetWatcherById(watcher_id int, db *sql.DB) (*types.Watcher, error) {
   if err != nil {
     return nil, err
   }
-  res.Close()
 
   watcher := types.Watcher{Id: watcher_id, Name: name}
   return &watcher, nil
 
 }
 
+func GetWatcherByName(watcher_name string, db *sql.DB) (*types.Watcher,error) {
+  exists,err := WatcherNameExists(watcher_name,db)
+  if err != nil { return nil,err}
+  if !exists { return nil, &WatcherNameDoesNotExistErr{watcher_name:watcher_name} }
+
+  query := fmt.Sprintf("SELECT rowid FROM watchers where name='%s'",watcher_name)
+  res, err := db.Query(query)
+  if err!=nil { return nil,err}
+  defer res.Close()
+
+  res.Next()
+  var watcher_id int
+  err = res.Scan(&watcher_name)
+  if err!=nil {return nil,err}
+
+  watcher := types.Watcher{Id:watcher_id,Name:watcher_name}
+  return &watcher,nil
+}
+
 func GetAllWatchers(db *sql.DB) ([]types.Watcher, error) {
-  query := "SELECT rowid,name from watchers"
+  query := "SELECT rowid,name FROM watchers"
   res, err := db.Query(query)
   if err != nil {
     return []types.Watcher{}, err
   }
+  defer res.Close()
 
   watchers := make([]types.Watcher, 0)
   for res.Next() {
@@ -82,7 +108,6 @@ func GetAllWatchers(db *sql.DB) ([]types.Watcher, error) {
     new_watcher := types.Watcher{Id: watcher_id, Name: watcher_name}
     watchers = append(watchers, new_watcher)
   }
-  res.Close()
 
   return watchers, nil
 }
@@ -95,6 +120,21 @@ func AddWatcher(watcher_name string, db *sql.DB) error {
   query := fmt.Sprintf("INSERT INTO watchers (name) VALUES ('%s');",watcher_name)
   _,err = db.Exec(query)
   if err != nil { return err }
+
+  return nil
+}
+
+func RemoveWatcher(watcher_name string, db *sql.DB) error {
+  watcher, err := GetWatcherByName(watcher_name,db)
+  if err != nil { return err }
+
+  query_del := fmt.Sprintf("DELETE FROM watchers WHERE name = '%s'",watcher_name)
+  _,err = db.Exec(query_del)
+  if err != nil { return err }
+
+  query_groups := fmt.Sprintf("DELETE FROM watchers_groups WHERE watcher_id=%d",watcher.Id)
+  _,err = db.Exec(query_groups)
+  if err!=nil { return err }
 
   return nil
 }

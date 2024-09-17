@@ -4,6 +4,7 @@ import (
   "context"
   "os/signal"
   "os"
+  "bytes"
   "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
   "strings"
@@ -28,11 +29,15 @@ func RunBot() error {
 
   b, err := bot.New(token,opts...)
   if err !=nil { return err }
+
+  RegisterHandlers(b)
   b.Start(ctx)
   return nil
 }
 
 func handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-  b.SendMessage(ctx,&bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text:"Received message"})
+  photo_data,err := os.ReadFile("./photo.jpg")
+  if err != nil { return }
+  b.SendPhoto(ctx,&bot.SendPhotoParams{ChatID: update.Message.Chat.ID, Photo:&models.InputFileUpload{Filename:"photo.jpg",Data:bytes.NewReader(photo_data)}})
 
 }

@@ -17,3 +17,11 @@ type UserIdNotFoundErr struct {
 func (e *UserIdNotFoundErr) Error() string {
   return fmt.Sprintf("Could not find user with id %d",e.user_id)
 }
+
+type WatcherExistsErr struct {
+  watcher_name string
+}
+
+func (e *WatcherExistsErr) Error() string{
+  return fmt.Sprintf("Watcher %s already exist",e.watcher_name)
+}

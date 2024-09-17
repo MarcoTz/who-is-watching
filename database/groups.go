@@ -70,7 +70,7 @@ func AddWatchGroup(show_id int, users []int, db *sql.DB) (int, error){
   
 
   for _,user_id := range users{
-    exists,err = WatcherExists(user_id,db)
+    exists,err = WatcherIdExists(user_id,db)
     if err !=nil { return 0,err} 
     if !exists { return 0,&UserIdNotFoundErr{user_id:user_id} }
     insert_st := fmt.Sprintf("INSERT INTO watchers_groups (watcher_id,group_id) values (%d,%d)",group_id,user_id)

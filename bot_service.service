@@ -1,0 +1,11 @@
+[Unit]
+Description=Whos Watching Bot
+
+[Service]
+ExecStart=/home/rooxo/who-is-watching/whoiswatching
+WorkingDirectory=/home/rooxo/whoiswatching
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=default.target

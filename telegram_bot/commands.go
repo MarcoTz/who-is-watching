@@ -5,6 +5,7 @@ import (
   "strconv"
 	"database/sql"
 	"fmt"
+  "os/exec"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"rooxo/whoiswatching/database"
@@ -18,6 +19,7 @@ const (
 	Help          Command = "/help"
 	PossibleShows Command = "/possible_shows" 
   RecommendShow Command = "/recommend"
+  PushChanges   Command = "/push"
 
 	// Show Commands
 	AddShow    Command = "/add_show"
@@ -497,6 +499,25 @@ func handleMarkNotDone(ctx context.Context, b *bot.Bot, update *models.Update){
 
 }
 
+func handlePush(ctx context.Context, b *bot.Bot, update *models.Update) {
+  err := exec.Command("git","add", "-A").Run()
+  if err != nil {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not add changes: %s",err)})
+    return
+  }
+  err = exec.Command("git","commit","-m", "autocommit").Run()
+  if err != nil {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not commit changes: %s",err)})
+    return
+  }
+  err = exec.Command("git","push").Run()
+  if err != nil {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not push changes: %s",err)})
+    return
+  }
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Successully pushed changes"})
+}
+
 func handleWhosBack(ctx context.Context, b *bot.Bot, update *models.Update){
   b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "back again"})
   b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "watchbot's back, tell a friend"})
@@ -521,4 +542,5 @@ func RegisterHandlers(b *bot.Bot) {
   b.RegisterHandler(bot.HandlerTypeMessageText, string(MarkDone), bot.MatchTypePrefix, handleMarkDone)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(MarkNotDone), bot.MatchTypePrefix, handleMarkNotDone)
   b.RegisterHandler(bot.HandlerTypeMessageText, "/guess_whos_back",bot.MatchTypeExact, handleWhosBack)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(PushChanges), bot.MatchTypeExact, handlePush)
 }

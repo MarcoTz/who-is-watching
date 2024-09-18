@@ -17,7 +17,6 @@ type Command string
 const (
 	Help          Command = "/help"
 	PossibleShows Command = "/possible_shows" //TODO
-	Input         Command = "/input"          //TODO
   RecommendShow Command = "/recommendation" //TODO
 
 	// Show Commands
@@ -28,9 +27,9 @@ const (
 	//Group Commands
 	ShowGroups    Command = "/show_groups"
 	AddGroup      Command = "/add_group" 
-	UpdateEp      Command = "/update_ep"      //TODO
-	AddWatcherGroup    Command = "/add_watcher_group"    //TODO
-  RemoveWatcherGroup Command = "/remove_watcher_group" //TODO
+	UpdateEp      Command = "/update_ep" 
+	AddWatcherGroup    Command = "/join_group"    //TODO
+  RemoveWatcherGroup Command = "/leave_group" //TODO
 	RemoveGroup Command = "/remove_group" 
 
 	//Watcher Commands
@@ -50,7 +49,10 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
   %s %s - %s,
   %s %s - %s
   %s %s - %s
-  %s %s - %s`,
+  %s %s - %s
+  %s %s %s - %s
+  %s %s %s - %s,
+  %s %s %s - %s`,
 		Help, "Get Help Message",
 		ShowShows, "Show all shows",
 		ShowGroups, "%show_name", "Show all groups (for show)",
@@ -60,7 +62,10 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
     AddShow, "%name", "Add new show",
     RemoveShow, "%name", "Remove show", 
     AddGroup, "%name", "Add watchgroup",
-    RemoveGroup, "%group_id", "Remove watchgrop")
+    RemoveGroup, "%group_id", "Remove watchgrop",
+    UpdateEp, "%group_id", "%episode_nr", "Update episode number for group",
+    AddWatcherGroup, "%group_id","%watcher_name", "Add watcher to group",
+    RemoveWatcherGroup, "%group_id", "%watcher_name", "Remove watcher from group")
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: help_text})
 }
 
@@ -114,7 +119,7 @@ func handleShowGroups(ctx context.Context, b *bot.Bot, update *models.Update) {
 	for _, group := range groups {
 		groups_str += "\n " + types.DisplayGroup(group)
 	}
-	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("All Groups:\n %s", groups_str)})
+	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("All Groups:%s", groups_str)})
 
 }
 
@@ -278,6 +283,107 @@ func handleRemoveGroup(ctx context.Context, b *bot.Bot, update *models.Update){
 
 }
 
+func handleUpdateEp(ctx context.Context, b *bot.Bot, update *models.Update){
+  input := strings.TrimSpace(strings.Replace(update.Message.Text,string(UpdateEp),"",-1))
+  if input == ""{
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Please provide group id and episode number"})
+    return 
+  }
+  input_sep := strings.Split(input," ")
+  if len(input_sep) != 2 {
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse inputs, please try again"})
+    return
+  }
+
+  group_id,err := strconv.Atoi(input_sep[0])
+  if err != nil { 
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse group id, please try again"})
+    return
+  }
+  ep_nr,err := strconv.Atoi(input_sep[1])
+  if err != nil { 
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse episode number, please try again"})
+    return
+  }
+
+  db, ok := ctx.Value("database").(*sql.DB)
+  if !ok {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probaly needs to be restarted"})
+    return
+  }
+  err = database.UpdateGroupEpisode(group_id,ep_nr,db)
+  if err != nil {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not update episode number: %s",err)})
+    return
+  }
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Successfully updated episode number %d for group %d ", group_id,ep_nr)})
+}
+
+func handleAddWatcherGroup(ctx context.Context, b *bot.Bot, update *models.Update){
+  input := strings.TrimSpace(strings.Replace(update.Message.Text,string(AddWatcherGroup),"",-1))
+  if input == ""{
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Please provide group id and watcher name"})
+    return 
+  }
+  input_sep := strings.Split(input," ")
+  if len(input_sep) != 2 {
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse inputs, please try again"})
+    return
+  }
+  group_id,err := strconv.Atoi(input_sep[0])
+  if err != nil {
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse group id, please try again"})
+    return
+  }
+  watcher_name := strings.TrimSpace(input_sep[1])
+
+	db, ok := ctx.Value("database").(*sql.DB)
+	if !ok {
+		b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probably needs to be restarted"})
+		return
+	}
+
+  err = database.AddWatcherGroup(group_id,watcher_name,db)
+  if err != nil {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not add watcher to group: %s",err)})
+		return
+  }
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Successfully added %s to group %d",watcher_name,group_id)})
+}
+
+func handleRemoveWatcherGroup(ctx context.Context, b *bot.Bot,update *models.Update){
+  input := strings.TrimSpace(strings.Replace(update.Message.Text,string(RemoveWatcherGroup),"",-1))
+  if input == ""{
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Please provide group id and watcher name"})
+    return 
+  }
+  input_sep := strings.Split(input," ")
+  if len(input_sep) != 2 {
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse inputs, please try again"})
+    return
+  }
+  group_id,err := strconv.Atoi(input_sep[0])
+  if err != nil {
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse group id, please try again"})
+    return
+  }
+  watcher_name := strings.TrimSpace(input_sep[1])
+
+	db, ok := ctx.Value("database").(*sql.DB)
+	if !ok {
+		b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probably needs to be restarted"})
+		return
+	}
+
+  err = database.RemoveWatcherGroup(group_id,watcher_name,db)
+  if err != nil {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not remove watcher from group: %s",err)})
+		return
+  }
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Successfully removed %s from group %d",watcher_name,group_id)})
+
+}
+
 func RegisterHandlers(b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(Help), bot.MatchTypeExact, handleHelp)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowShows), bot.MatchTypeExact, handleShowShows)
@@ -289,4 +395,7 @@ func RegisterHandlers(b *bot.Bot) {
   b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveShow), bot.MatchTypePrefix, handleRemoveShow)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(AddGroup), bot.MatchTypePrefix, handleAddGroup)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveGroup), bot.MatchTypePrefix, handleRemoveGroup)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(UpdateEp), bot.MatchTypePrefix, handleUpdateEp)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(AddWatcherGroup), bot.MatchTypePrefix, handleAddWatcherGroup)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveWatcherGroup), bot.MatchTypePrefix, handleRemoveWatcherGroup)
 }

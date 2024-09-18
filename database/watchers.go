@@ -81,7 +81,7 @@ func GetWatcherByName(watcher_name string, db *sql.DB) (*types.Watcher,error) {
 
   res.Next()
   var watcher_id int
-  err = res.Scan(&watcher_name)
+  err = res.Scan(&watcher_id)
   if err!=nil {return nil,err}
 
   watcher := types.Watcher{Id:watcher_id,Name:watcher_name}

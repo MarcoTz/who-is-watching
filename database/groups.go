@@ -134,3 +134,49 @@ func GetGroupsByShowName(show_name string, db *sql.DB) ([]types.WatchGroup,error
 
   return groups,nil
 }
+
+func UpdateGroupEpisode(group_id int, new_ep int, db *sql.DB) error {
+  exists, err := GroupIdExists(group_id,db)
+  if err!=nil { return err}
+  if !exists { return &GroupIdDoesNotExistErr{group_id:group_id} }
+
+  stmt := fmt.Sprintf("UPDATE watchgroups SET current_ep=%d WHERE rowid=%d",new_ep,group_id)
+  _,err = db.Exec(stmt)
+  if err != nil { return err }
+
+  return nil
+}
+
+func AddWatcherGroup(group_id int, watcher_name string, db *sql.DB) error {
+  watcher,err := GetWatcherByName(watcher_name,db)
+  if err != nil { return err } 
+
+  query := fmt.Sprintf("INSERT INTO watchers_groups (group_id,watcher_id) VALUES (%d,%d)",group_id,watcher.Id)
+  _,err = db.Exec(query)
+  if err != nil { return err } 
+
+  return nil
+}
+
+func RemoveWatcherGroup(group_id int, watcher_name string, db *sql.DB) error{
+  watcher,err := GetWatcherByName(watcher_name,db)
+  if err != nil { return err}
+
+  is_watching_query := fmt.Sprintf("SELECT COUNT(*) FROM watchers_groups WHERE group_id=%d AND watcher_id=%d",group_id,watcher.Id)
+  res,err := db.Query(is_watching_query)
+  if err != nil { return err }
+
+  res.Next()
+  var count int 
+  err = res.Scan(&count)
+  if err != nil { return err }
+  if count == 0 { return &NotAWatcherErr{watcher_name:watcher_name,group_id:group_id} }
+  res.Close()
+
+  
+  query := fmt.Sprintf("DELETE FROM watchers_groups WHERE group_id=%d AND watcher_id=%d",group_id,watcher.Id)
+  _,err = db.Exec(query)
+  if err != nil { return err }
+
+  return nil
+}

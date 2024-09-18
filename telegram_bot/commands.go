@@ -437,8 +437,13 @@ func handlePossible(ctx context.Context, b *bot.Bot, update *models.Update){
     b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not get possible shows: %s",err)})
 		return
 	}
+  if len(shows) == 0{
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text:fmt.Sprintf("%s do not have a show to watch",input)})
+    return
+  }
   rand_show := types.RandomShow(shows)
   b.SendMessage(ctx, &bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text:fmt.Sprintf("%s can watch %s",input,rand_show.Name)})
+
 }
 
 func RegisterHandlers(b *bot.Bot) {

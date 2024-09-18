@@ -7,15 +7,16 @@ type WatchGroup struct {
   Watchers []Watcher 
   Show Show
   Current_ep int
+  Done bool
 }
 
 func DisplayGroup(gr WatchGroup) string {
   group_str := fmt.Sprintf(`
   Group (ID %d) 
-    show: %s
+  show: %s, done: %t
     current episode: %d
     watchers:`, 
-  gr.Id, gr.Show.Name, gr.Current_ep)
+  gr.Id, gr.Show.Name, gr.Done, gr.Current_ep)
   for _,watcher := range gr.Watchers{
     group_str += ", "+watcher.Name
   }

@@ -32,6 +32,7 @@ const (
   RemoveWatcherGroup Command = "/leave_group"
 	RemoveGroup Command = "/remove_group" 
   MarkDone Command = "/finish_show"
+  MarkNotDone Command = "/unfinish_show"
 
 	//Watcher Commands
 	ShowWatchers  Command = "/show_watchers"
@@ -56,6 +57,7 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
   %s %s %s - %s,
   %s (%s) - %s,
   %s %s - %s
+  %s %s - %s
   %s %s - %s`,
 		Help, "Get Help Message",
 		ShowShows, "Show all shows",
@@ -72,7 +74,8 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
     RemoveWatcherGroup, "%group_id", "%watcher_name", "Remove watcher from group",
     RecommendShow, "%watcher_1 %watcher_2 ...", "Recommend show (for watchers)",
     PossibleShows, "%watcher_1 %watcher_2 ...", "Get possible show to watch with watchers",
-    MarkDone, "%group_id", "Mark group as done")
+    MarkDone, "%group_id", "Mark group as done",
+    MarkNotDone, "%group_id", "Mark group as not done")
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: help_text})
 }
 
@@ -257,13 +260,13 @@ func handleAddGroup(ctx context.Context, b *bot.Bot, update *models.Update){
     return
   }
 
-  err = database.AddWatchGroup(show.Id, db)
+  new_id, err := database.AddWatchGroup(show.Id, db)
   if err!= nil {
     b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not create watchgroup: %s",err)})
     return
   }
 
-  b.SendMessage(ctx,&bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text: fmt.Sprintf("Successfully created watchgroup for %s",show_name)})
+  b.SendMessage(ctx,&bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text: fmt.Sprintf("Successfully created watchgroup (ID %d) for %s",new_id,show_name)})
 
 }
 
@@ -471,6 +474,29 @@ func handleMarkDone(ctx context.Context, b *bot.Bot, update *models.Update){
   b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Successfully marked group %d as done",group_id)})
 }
 
+func handleMarkNotDone(ctx context.Context, b *bot.Bot, update *models.Update){
+  group_id,err := strconv.Atoi(strings.TrimSpace(strings.Replace(update.Message.Text,string(MarkNotDone),"",-1)))
+  if err!= nil{
+      b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Please provide group id"})
+      return
+  }
+
+	db, ok := ctx.Value("database").(*sql.DB)
+	if !ok {
+		b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probably needs to be restarted"})
+		return
+	}
+
+  err = database.MarkNotDone(group_id,db)
+  if err != nil { 
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not mark as not done: %s",err)})
+		return
+  }
+
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Successfully marked group %d as not done",group_id)})
+
+}
+
 func RegisterHandlers(b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(Help), bot.MatchTypeExact, handleHelp)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowShows), bot.MatchTypeExact, handleShowShows)
@@ -488,4 +514,5 @@ func RegisterHandlers(b *bot.Bot) {
   b.RegisterHandler(bot.HandlerTypeMessageText, string(RecommendShow), bot.MatchTypePrefix, handleRecommendation)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(PossibleShows), bot.MatchTypePrefix, handlePossible)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(MarkDone), bot.MatchTypePrefix, handleMarkDone)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(MarkNotDone), bot.MatchTypePrefix, handleMarkNotDone)
 }

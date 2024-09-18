@@ -44,6 +44,10 @@ func GetShowById(show_id int, db *sql.DB) (*types.Show, error) {
 }
 
 func GetShowByName(name string, db *sql.DB) (*types.Show,error){
+  exists, err := ShowNameExists(name,db)
+  if err != nil { return nil,err}
+  if !exists { return nil,&ShowNameDoesNotExist{show_name:name} }
+
   query := fmt.Sprintf("SELECT rowid FROM shows WHERE name='%s'",name)
   res, err := db.Query(query)
   if err != nil { return nil,err}

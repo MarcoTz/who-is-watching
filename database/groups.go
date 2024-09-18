@@ -63,21 +63,31 @@ func GetAllGroups(db *sql.DB) ([]types.WatchGroup,error){
   return groups,nil
 }
 
-func AddWatchGroup(show_id int, db *sql.DB) error{
+func AddWatchGroup(show_id int, db *sql.DB) (int,error){
   exists, err := ShowIdExists(show_id,db)
   if !exists{
-    return &ShowIdDoesNotExist{show_id:show_id}
+    return 0,&ShowIdDoesNotExist{show_id:show_id}
   }
   if err!=nil{
-    return err
+    return 0,err
   }
 
   query := fmt.Sprintf("INSERT INTO watchgroups (show_id,current_ep,done) VALUES (%d,1,false)",show_id)
   _,err = db.Exec(query)
   if err !=nil{
-    return err
+    return 0,err
   }
-  return nil
+
+  query = "SELECT MAX(rowid) FROM watchgroups"
+  res, err := db.Query(query)
+  if err != nil { return 0,err} 
+  defer res.Close()
+  res.Next()
+  var group_id int 
+  err = res.Scan(&group_id)
+  if err != nil { return 0,err} 
+
+  return group_id,nil
 
 }
 
@@ -234,5 +244,16 @@ func MarkDone(group_id int, db *sql.DB) error {
   _,err = db.Exec(query)
   if err != nil { return err }
 
+  return nil
+}
+
+func MarkNotDone(group_id int, db *sql.DB) error {
+  exists, err := GroupIdExists(group_id,db)
+  if err != nil { return err }
+  if !exists{ return &GroupIdDoesNotExistErr{group_id:group_id} }
+
+  query := fmt.Sprintf("UPDATE watchgroups SET done=false WHERE rowid=%d",group_id)
+  _, err = db.Exec(query)
+  if err != nil { return err }
   return nil
 }

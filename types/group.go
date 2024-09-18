@@ -1,6 +1,9 @@
 package types 
 
-import "fmt"
+import ( 
+  "fmt"
+  "strings"
+)
 
 type WatchGroup struct {
   Id int 
@@ -11,14 +14,17 @@ type WatchGroup struct {
 }
 
 func DisplayGroup(gr WatchGroup) string {
+  watcher_names := make([]string,0)
+  for _,watcher := range gr.Watchers {
+    watcher_names = append(watcher_names,watcher.Name)
+  }
+  watcher_str := strings.Join(watcher_names,", ")
+
   group_str := fmt.Sprintf(`
   Group (ID %d) 
   show: %s, done: %t
     current episode: %d
-    watchers:`, 
-  gr.Id, gr.Show.Name, gr.Done, gr.Current_ep)
-  for _,watcher := range gr.Watchers{
-    group_str += ", "+watcher.Name
-  }
+    watchers: %s`, 
+  gr.Id, gr.Show.Name, gr.Done, gr.Current_ep,watcher_str)
   return group_str
 }

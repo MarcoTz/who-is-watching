@@ -16,3 +16,6 @@ func (e *WatcherNameDoesNotExistErr) Error() string{ return fmt.Sprintf("Watcher
 
 type WatcherIdDoesNotExistErr struct { watcher_id int }
 func (e *WatcherIdDoesNotExistErr) Error() string{ return fmt.Sprintf("Watcher with id %d does not exist", e.watcher_id) }
+
+type GroupIdDoesNotExistErr struct {group_id int}
+func (e *GroupIdDoesNotExistErr) Error() string { return fmt.Sprintf("Group with id %d does not exist",e.group_id) }

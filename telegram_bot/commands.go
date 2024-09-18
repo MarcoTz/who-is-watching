@@ -2,6 +2,7 @@ package telegram_bot
 
 import (
 	"context"
+  "strconv"
 	"database/sql"
 	"fmt"
 	"github.com/go-telegram/bot"
@@ -17,6 +18,7 @@ const (
 	Help          Command = "/help"
 	PossibleShows Command = "/possible_shows" //TODO
 	Input         Command = "/input"          //TODO
+  RecommendShow Command = "/recommendation" //TODO
 
 	// Show Commands
 	AddShow    Command = "/add_show"
@@ -25,10 +27,11 @@ const (
 
 	//Group Commands
 	ShowGroups    Command = "/show_groups"
-	AddGroup      Command = "/add_group"      //TODO
+	AddGroup      Command = "/add_group" 
 	UpdateEp      Command = "/update_ep"      //TODO
-	AddWatcherGroup    Command = "/add_watcher"    //TODO
-	RemoveWatcherGroup Command = "/remove_watcher_group" //TODO
+	AddWatcherGroup    Command = "/add_watcher_group"    //TODO
+  RemoveWatcherGroup Command = "/remove_watcher_group" //TODO
+	RemoveGroup Command = "/remove_group" 
 
 	//Watcher Commands
 	ShowWatchers  Command = "/show_watchers"
@@ -45,6 +48,8 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
   %s %s - %s
   %s %s - %s
   %s %s - %s,
+  %s %s - %s
+  %s %s - %s
   %s %s - %s`,
 		Help, "Get Help Message",
 		ShowShows, "Show all shows",
@@ -53,7 +58,9 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
     AddWatcher, "%name", "Add new watcher",
     RemoveWatcher, "%name", "Remove watcher",
     AddShow, "%name", "Add new show",
-    RemoveShow, "%name", "Remove show")
+    RemoveShow, "%name", "Remove show", 
+    AddGroup, "%name", "Add watchgroup",
+    RemoveGroup, "%group_id", "Remove watchgrop")
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: help_text})
 }
 
@@ -205,14 +212,67 @@ func handleRemoveShow(ctx context.Context, b *bot.Bot, update *models.Update){
 
 }
 
+func handleAddGroup(ctx context.Context, b *bot.Bot, update *models.Update){
+  show_name := strings.TrimSpace(strings.Replace(update.Message.Text, string(AddGroup),"",-1))
+  if show_name == ""{
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text:"Please provied show name"})
+    return
+  }
+ 
+  db, ok := ctx.Value("database").(*sql.DB)
+  if !ok {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probaly needs to be restarted"})
+    return
+  }
+
+  show, err := database.GetShowByName(show_name,db)
+  if err != nil { 
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not get show %s: %s",show_name,err)})
+    return
+  }
+
+  err = database.AddWatchGroup(show.Id, db)
+  if err!= nil {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not create watchgroup: %s",err)})
+    return
+  }
+
+  b.SendMessage(ctx,&bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text: fmt.Sprintf("Successfully created watchgroup for %s",show_name)})
+
+}
+
+func handleRemoveGroup(ctx context.Context, b *bot.Bot, update *models.Update){
+  group_id_str := strings.TrimSpace(strings.Replace(update.Message.Text,string(RemoveGroup),"",-1))
+  group_id,err := strconv.Atoi(group_id_str)
+  if err != nil {
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text:fmt.Sprintf("Please provided group id (see %s",ShowGroups)})
+    return
+  }
+
+  db, ok := ctx.Value("database").(*sql.DB)
+  if !ok {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probaly needs to be restarted"})
+    return
+  }
+
+  err = database.RemoveGroup(group_id,db)
+  if err != nil {
+    b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:fmt.Sprintf("Could not remove group: %s",err)})
+    return 
+  }
+  b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Successfully removed group"})
+
+}
+
 func RegisterHandlers(b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(Help), bot.MatchTypeExact, handleHelp)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowShows), bot.MatchTypeExact, handleShowShows)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowGroups), bot.MatchTypeExact, handleShowGroups)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowWatchers), bot.MatchTypeExact, handleShowWatchers)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(AddWatcher), bot.MatchTypePrefix, handleAddWatcher)
-  b.RegisterHandler(bot.HandlerTypeMessageText,  string(RemoveWatcher), bot.MatchTypePrefix, handleRemoveWatcher)
-  b.RegisterHandler(bot.HandlerTypeMessageText,  string(AddShow), bot.MatchTypePrefix, handleAddShow)
-  b.RegisterHandler(bot.HandlerTypeMessageText,  string(RemoveShow), bot.MatchTypePrefix, handleRemoveShow)
-
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveWatcher), bot.MatchTypePrefix, handleRemoveWatcher)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(AddShow), bot.MatchTypePrefix, handleAddShow)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveShow), bot.MatchTypePrefix, handleRemoveShow)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(AddGroup), bot.MatchTypePrefix, handleAddGroup)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveGroup), bot.MatchTypePrefix, handleRemoveGroup)
 }

@@ -6,6 +6,20 @@ import (
   "database/sql"
 )
 
+func GroupIdExists(group_id int, db *sql.DB) (bool,error){
+  query := fmt.Sprintf("SELECT COUNT(*) FROM watchgroups WHERE rowid=%d",group_id)
+  res,err := db.Query(query)
+  if err != nil { return false,err }
+  defer res.Close()
+
+  res.Next()
+  var num int
+  err = res.Scan(&num)
+  if err != nil { return false,err}
+  
+  return num>0,nil
+}
+
 func GetAllGroups(db *sql.DB) ([]types.WatchGroup,error){
   query := "SELECT rowid,show_id,current_ep FROM watchgroups"
   res, err := db.Query(query)
@@ -47,41 +61,36 @@ func GetAllGroups(db *sql.DB) ([]types.WatchGroup,error){
   return groups,nil
 }
 
-func AddWatchGroup(show_id int, users []int, db *sql.DB) (int, error){
+func AddWatchGroup(show_id int, db *sql.DB) error{
   exists, err := ShowIdExists(show_id,db)
   if !exists{
-    return 0,&ShowIdDoesNotExist{show_id:show_id}
+    return &ShowIdDoesNotExist{show_id:show_id}
   }
   if err!=nil{
-    return 0,err
+    return err
   }
 
-  query := fmt.Sprintf("INSERT INTO watchgroups show_id VALUES %d",show_id)
+  query := fmt.Sprintf("INSERT INTO watchgroups (show_id,current_ep) VALUES (%d,1)",show_id)
   _,err = db.Exec(query)
   if err !=nil{
-    return 0,err
+    return err
   }
+  return nil
 
-  var group_id int
-  id_query := "SELECT MAX(row_id) from watchgroups";
-  res,err := db.Query(id_query)
-  if err!=nil {return 0,err}
-  defer res.Close() 
+}
 
-  res.Next()
-  err = res.Scan(&group_id)
-  if err!=nil { return 0,err}
-  
+func RemoveGroup(group_id int, db *sql.DB) error {
+  exists,err := GroupIdExists(group_id,db)
+  if err != nil { return err}
+  if !exists { return &GroupIdDoesNotExistErr {group_id:group_id} }
 
-  for _,watcher_id := range users{
-    exists,err = WatcherIdExists(watcher_id,db)
-    if err !=nil { return 0,err} 
-    if !exists { return 0,&WatcherIdDoesNotExistErr{watcher_id:watcher_id} }
-    insert_st := fmt.Sprintf("INSERT INTO watchers_groups (watcher_id,group_id) values (%d,%d)",group_id,watcher_id)
-    _,err = db.Exec(insert_st)
-    if err != nil { return 0,err}
-  }
+  del_stmt := fmt.Sprintf("DELETE FROM watchgroups WHERE rowid=%d",group_id)
+  _,err = db.Exec(del_stmt)
+  if err != nil { return err }
 
-  return group_id,nil
+  links_stmt := fmt.Sprintf("DELETE FROM watchers_groups WHERE group_id=%d",group_id)
+  _,err = db.Exec(links_stmt)
+  if err != nil { return err}
 
+  return nil
 }

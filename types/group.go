@@ -10,9 +10,14 @@ type WatchGroup struct {
 }
 
 func DisplayGroup(gr WatchGroup) string {
-  group_str := fmt.Sprintf("Group for show : %s, current episode: %d, watchesr:\n", gr.Show.Name, gr.Current_ep)
+  group_str := fmt.Sprintf(`
+  Group (ID %d) 
+    show: %s
+    current episode: %d
+    watchers:`, 
+  gr.Id, gr.Show.Name, gr.Current_ep)
   for _,watcher := range gr.Watchers{
-    group_str += "\n"+watcher.Name
+    group_str += ", "+watcher.Name
   }
   return group_str
 }

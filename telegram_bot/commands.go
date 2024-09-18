@@ -16,7 +16,7 @@ type Command string
 
 const (
 	Help          Command = "/help"
-	PossibleShows Command = "/possible_shows" //TODO
+	PossibleShows Command = "/possible_shows" 
   RecommendShow Command = "/recommend"
 
 	// Show Commands
@@ -31,6 +31,7 @@ const (
 	AddWatcherGroup    Command = "/join_group"
   RemoveWatcherGroup Command = "/leave_group"
 	RemoveGroup Command = "/remove_group" 
+  MarkDone Command = "/finish_show"
 
 	//Watcher Commands
 	ShowWatchers  Command = "/show_watchers"
@@ -54,22 +55,24 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
   %s %s %s - %s,
   %s %s %s - %s,
   %s (%s) - %s,
+  %s %s - %s
   %s %s - %s`,
 		Help, "Get Help Message",
 		ShowShows, "Show all shows",
 		ShowGroups, "%show_name", "Show all groups (for show)",
 		ShowWatchers, "Show all watchers",
-    AddWatcher, "%name", "Add new watcher",
-    RemoveWatcher, "%name", "Remove watcher",
-    AddShow, "%name", "Add new show",
-    RemoveShow, "%name", "Remove show", 
-    AddGroup, "%name", "Add watchgroup",
+    AddWatcher, "%watcher_name", "Add new watcher",
+    RemoveWatcher, "%watcher_name", "Remove watcher",
+    AddShow, "%show_name", "Add new show",
+    RemoveShow, "%show_name", "Remove show", 
+    AddGroup, "%show_name", "Add watchgroup",
     RemoveGroup, "%group_id", "Remove watchgrop",
     UpdateEp, "%group_id", "%episode_nr", "Update episode number for group",
     AddWatcherGroup, "%group_id","%watcher_name", "Add watcher to group",
     RemoveWatcherGroup, "%group_id", "%watcher_name", "Remove watcher from group",
-    RecommendShow, "%watcher1 %watcher_2 ...", "Recommend show (for watchers)",
-    PossibleShows, "%watcher_1 %watcher_2 ...", "Get possible show to watch with watchers")
+    RecommendShow, "%watcher_1 %watcher_2 ...", "Recommend show (for watchers)",
+    PossibleShows, "%watcher_1 %watcher_2 ...", "Get possible show to watch with watchers",
+    MarkDone, "%group_id", "Mark group as done")
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: help_text})
 }
 
@@ -446,6 +449,28 @@ func handlePossible(ctx context.Context, b *bot.Bot, update *models.Update){
 
 }
 
+func handleMarkDone(ctx context.Context, b *bot.Bot, update *models.Update){
+  group_id,err := strconv.Atoi(strings.TrimSpace(strings.Replace(update.Message.Text,string(MarkDone),"",-1)))
+  if err!= nil{
+      b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Please provide group id"})
+      return
+  }
+
+	db, ok := ctx.Value("database").(*sql.DB)
+	if !ok {
+		b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probably needs to be restarted"})
+		return
+	}
+
+  err = database.MarkDone(group_id,db)
+  if err != nil { 
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not mark as done: %s",err)})
+		return
+  }
+
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Successfully marked group %d as done",group_id)})
+}
+
 func RegisterHandlers(b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(Help), bot.MatchTypeExact, handleHelp)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowShows), bot.MatchTypeExact, handleShowShows)
@@ -462,4 +487,5 @@ func RegisterHandlers(b *bot.Bot) {
   b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveWatcherGroup), bot.MatchTypePrefix, handleRemoveWatcherGroup)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(RecommendShow), bot.MatchTypePrefix, handleRecommendation)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(PossibleShows), bot.MatchTypePrefix, handlePossible)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(MarkDone), bot.MatchTypePrefix, handleMarkDone)
 }

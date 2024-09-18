@@ -224,3 +224,15 @@ func GetPossibleShows(watcher_names []string, db *sql.DB) ([]types.Show, error) 
   return shows,nil
 
 }
+
+func MarkDone(group_id int, db *sql.DB) error {
+  exists,err := GroupIdExists(group_id,db)
+  if err != nil { return err}
+  if !exists { return &GroupIdDoesNotExistErr{group_id:group_id} }
+
+  query := fmt.Sprintf("UPDATE watchgroups SET done=true WHERE rowid=%d",group_id)
+  _,err = db.Exec(query)
+  if err != nil { return err }
+
+  return nil
+}

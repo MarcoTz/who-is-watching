@@ -17,7 +17,7 @@ type Command string
 const (
 	Help          Command = "/help"
 	PossibleShows Command = "/possible_shows" //TODO
-  RecommendShow Command = "/recommendation" //TODO
+  RecommendShow Command = "/recommend" //TODO
 
 	// Show Commands
 	AddShow    Command = "/add_show"
@@ -28,8 +28,8 @@ const (
 	ShowGroups    Command = "/show_groups"
 	AddGroup      Command = "/add_group" 
 	UpdateEp      Command = "/update_ep" 
-	AddWatcherGroup    Command = "/join_group"    //TODO
-  RemoveWatcherGroup Command = "/leave_group" //TODO
+	AddWatcherGroup    Command = "/join_group"
+  RemoveWatcherGroup Command = "/leave_group"
 	RemoveGroup Command = "/remove_group" 
 
 	//Watcher Commands
@@ -52,7 +52,8 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
   %s %s - %s
   %s %s %s - %s
   %s %s %s - %s,
-  %s %s %s - %s`,
+  %s %s %s - %s,
+  %s (%s) - %s`,
 		Help, "Get Help Message",
 		ShowShows, "Show all shows",
 		ShowGroups, "%show_name", "Show all groups (for show)",
@@ -65,7 +66,8 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
     RemoveGroup, "%group_id", "Remove watchgrop",
     UpdateEp, "%group_id", "%episode_nr", "Update episode number for group",
     AddWatcherGroup, "%group_id","%watcher_name", "Add watcher to group",
-    RemoveWatcherGroup, "%group_id", "%watcher_name", "Remove watcher from group")
+    RemoveWatcherGroup, "%group_id", "%watcher_name", "Remove watcher from group",
+    RecommendShow, "%watcher1,%watcher_2,...", "Recommend show (for watchers)")
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: help_text})
 }
 
@@ -384,6 +386,36 @@ func handleRemoveWatcherGroup(ctx context.Context, b *bot.Bot,update *models.Upd
 
 }
 
+func handleRecommendation(ctx context.Context, b * bot.Bot, update *models.Update) {
+  db, ok := ctx.Value("database").(*sql.DB)
+  if !ok {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probably needs to be restarted"})
+    return
+  }
+
+  input := strings.TrimSpace(strings.Replace(update.Message.Text,string(RecommendShow),"",-1))
+  shows := make([]types.Show,0)
+  if input == "" {
+    loaded_shows,err := database.GetAllShows(db)
+    if err != nil {
+      b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not load shows: %s",err)})
+      return
+    }
+    shows = loaded_shows
+  }else {
+    watchers := strings.Split(input," ")
+    loaded_shows, err := database.GetUnwatchedShows(watchers,db)
+    if err != nil {
+      b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:fmt.Sprintf("Could not get shows to watch: %s", err)})
+      return
+    }
+    shows = loaded_shows
+  }
+    rand_show := types.RandomShow(shows)
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:fmt.Sprintf("You should watch %s",rand_show.Name)})
+    return
+}
+
 func RegisterHandlers(b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(Help), bot.MatchTypeExact, handleHelp)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowShows), bot.MatchTypeExact, handleShowShows)
@@ -398,4 +430,5 @@ func RegisterHandlers(b *bot.Bot) {
   b.RegisterHandler(bot.HandlerTypeMessageText, string(UpdateEp), bot.MatchTypePrefix, handleUpdateEp)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(AddWatcherGroup), bot.MatchTypePrefix, handleAddWatcherGroup)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveWatcherGroup), bot.MatchTypePrefix, handleRemoveWatcherGroup)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(RecommendShow), bot.MatchTypePrefix, handleRecommendation)
 }

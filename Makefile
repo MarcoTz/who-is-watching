@@ -1,5 +1,5 @@
-run: 
-	go run ./
+bot: 
+	go run ./telegram_bot
 
 build: 
 	export CGO_ENABLED=1

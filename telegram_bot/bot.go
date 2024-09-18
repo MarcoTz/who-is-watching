@@ -6,9 +6,7 @@ import (
   "os"
   "database/sql"
   "strings"
-  "bytes"
   "github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
 )
 
 func loadConfig() (string,error) {
@@ -24,7 +22,7 @@ func RunBot(db *sql.DB) error {
     return err 
   }
 
-  opts := []bot.Option{bot.WithDefaultHandler(handler),}
+  opts := []bot.Option{}
   bg, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
   ctx := context.WithValue(bg,"database",db)
   defer cancel()
@@ -35,11 +33,4 @@ func RunBot(db *sql.DB) error {
   RegisterHandlers(b)
   b.Start(ctx)
   return nil
-}
-
-func handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-  photo_data,err := os.ReadFile("./photo.jpg")
-  if err != nil { return }
-  b.SendPhoto(ctx,&bot.SendPhotoParams{ChatID: update.Message.Chat.ID, Photo:&models.InputFileUpload{Filename:"photo.jpg",Data:bytes.NewReader(photo_data)}})
-
 }

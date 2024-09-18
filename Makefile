@@ -1,5 +1,6 @@
 run: 
 	go run ./
 
-fmt:
-	go fmt
+build: 
+	export CGO_ENABLED=1
+	go build

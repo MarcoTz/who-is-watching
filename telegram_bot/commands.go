@@ -497,6 +497,11 @@ func handleMarkNotDone(ctx context.Context, b *bot.Bot, update *models.Update){
 
 }
 
+func handleWhosBack(ctx context.Context, b *bot.Bot, update *models.Update){
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "back again"})
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "watchbot's back, tell a friend"})
+}
+
 func RegisterHandlers(b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(Help), bot.MatchTypeExact, handleHelp)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowShows), bot.MatchTypeExact, handleShowShows)
@@ -515,4 +520,5 @@ func RegisterHandlers(b *bot.Bot) {
   b.RegisterHandler(bot.HandlerTypeMessageText, string(PossibleShows), bot.MatchTypePrefix, handlePossible)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(MarkDone), bot.MatchTypePrefix, handleMarkDone)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(MarkNotDone), bot.MatchTypePrefix, handleMarkNotDone)
+  b.RegisterHandler(bot.HandlerTypeMessageText, "/guess_whos_back",bot.MatchTypeExact, handleWhosBack)
 }

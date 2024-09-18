@@ -43,7 +43,7 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
 	help_text := fmt.Sprintf(`Possible Commands
   %s - %s
   %s - %s
-  %s - %s
+  %s (%s) - %s
   %s - %s
   %s %s - %s
   %s %s - %s
@@ -53,7 +53,7 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
   %s %s - %s`,
 		Help, "Get Help Message",
 		ShowShows, "Show all shows",
-		ShowGroups, "Show all groups",
+		ShowGroups, "%show_name", "Show all groups (for show)",
 		ShowWatchers, "Show all watchers",
     AddWatcher, "%name", "Add new watcher",
     RemoveWatcher, "%name", "Remove watcher",
@@ -90,11 +90,25 @@ func handleShowGroups(ctx context.Context, b *bot.Bot, update *models.Update) {
 		b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probably needs to be restarted"})
 		return
 	}
-	groups, err := database.GetAllGroups(db)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not load groups %s", err)})
-		return
-	}
+
+  show_name := strings.TrimSpace(strings.Replace(update.Message.Text,string(ShowGroups),"",-1))
+  groups := make([]types.WatchGroup,0)
+  if show_name == "" {
+    loaded_groups, err := database.GetAllGroups(db)
+    if err != nil {
+      b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not load groups: %s", err)})
+      return
+    }
+    groups =loaded_groups
+  }else {
+    loaded_groups, err := database.GetGroupsByShowName(show_name,db)
+    if err!= nil { 
+      b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not load groups: %s", err)})
+      return
+    }
+    groups = loaded_groups
+
+  }
 
 	var groups_str string
 	for _, group := range groups {
@@ -267,7 +281,7 @@ func handleRemoveGroup(ctx context.Context, b *bot.Bot, update *models.Update){
 func RegisterHandlers(b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(Help), bot.MatchTypeExact, handleHelp)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowShows), bot.MatchTypeExact, handleShowShows)
-	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowGroups), bot.MatchTypeExact, handleShowGroups)
+	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowGroups), bot.MatchTypePrefix, handleShowGroups)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowWatchers), bot.MatchTypeExact, handleShowWatchers)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(AddWatcher), bot.MatchTypePrefix, handleAddWatcher)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveWatcher), bot.MatchTypePrefix, handleRemoveWatcher)

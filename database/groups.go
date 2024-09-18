@@ -94,3 +94,43 @@ func RemoveGroup(group_id int, db *sql.DB) error {
 
   return nil
 }
+
+func GetGroupsByShowName(show_name string, db *sql.DB) ([]types.WatchGroup,error) {
+  show, err := GetShowByName(show_name,db)
+  if err!= nil { return []types.WatchGroup{},err }
+
+  query := fmt.Sprintf("SELECT rowid,current_ep from watchgroups where show_id=%d",show.Id)
+  res,err := db.Query(query)
+  if err!=nil {return []types.WatchGroup{},err}
+  defer res.Close()
+
+  groups := make([]types.WatchGroup,0)
+  for res.Next(){
+    var group_id int
+    var current_ep int
+    err = res.Scan(&group_id,&current_ep)
+    if err != nil {return [] types.WatchGroup{},err}
+
+    watcher_query := fmt.Sprintf("SELECT watcher_id FROM watchers_groups WHERE group_id=%d",group_id)
+    watcher_res, err := db.Query(watcher_query)
+    if err != nil { return [] types.WatchGroup{},err} 
+    defer watcher_res.Close()
+
+    group_watchers := make([]types.Watcher,0)
+    for watcher_res.Next() {
+      var watcher_id int
+      err = watcher_res.Scan(&watcher_id)
+      if err != nil { return []types.WatchGroup{},err}
+
+      watcher,err := GetWatcherById(watcher_id,db)
+      if err != nil { return []types.WatchGroup{},err}
+      group_watchers = append(group_watchers,*watcher)
+      
+    }
+
+    new_group := types.WatchGroup { Id: group_id, Show: *show, Current_ep:current_ep, Watchers:group_watchers} 
+    groups = append(groups,new_group)
+  }
+
+  return groups,nil
+}

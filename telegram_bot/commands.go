@@ -17,7 +17,7 @@ type Command string
 const (
 	Help          Command = "/help"
 	PossibleShows Command = "/possible_shows" //TODO
-  RecommendShow Command = "/recommend" //TODO
+  RecommendShow Command = "/recommend"
 
 	// Show Commands
 	AddShow    Command = "/add_show"
@@ -53,7 +53,8 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
   %s %s %s - %s
   %s %s %s - %s,
   %s %s %s - %s,
-  %s (%s) - %s`,
+  %s (%s) - %s,
+  %s %s - %s`,
 		Help, "Get Help Message",
 		ShowShows, "Show all shows",
 		ShowGroups, "%show_name", "Show all groups (for show)",
@@ -67,7 +68,8 @@ func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
     UpdateEp, "%group_id", "%episode_nr", "Update episode number for group",
     AddWatcherGroup, "%group_id","%watcher_name", "Add watcher to group",
     RemoveWatcherGroup, "%group_id", "%watcher_name", "Remove watcher from group",
-    RecommendShow, "%watcher1,%watcher_2,...", "Recommend show (for watchers)")
+    RecommendShow, "%watcher1 %watcher_2 ...", "Recommend show (for watchers)",
+    PossibleShows, "%watcher_1 %watcher_2 ...", "Get possible show to watch with watchers")
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: help_text})
 }
 
@@ -416,6 +418,29 @@ func handleRecommendation(ctx context.Context, b * bot.Bot, update *models.Updat
     return
 }
 
+func handlePossible(ctx context.Context, b *bot.Bot, update *models.Update){
+  input := strings.TrimSpace(strings.Replace(update.Message.Text,string(PossibleShows),"",-1))
+  if input == "" {
+      b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Could not parse input, please try again"})
+      return
+  }
+  watchers := strings.Split(input," ")
+
+	db, ok := ctx.Value("database").(*sql.DB)
+	if !ok {
+		b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Database connection failed, bot probably needs to be restarted"})
+		return
+	}
+
+  shows, err := database.GetPossibleShows(watchers,db)
+	if err != nil {
+    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: fmt.Sprintf("Could not get possible shows: %s",err)})
+		return
+	}
+  rand_show := types.RandomShow(shows)
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text:fmt.Sprintf("%s can watch %s",input,rand_show.Name)})
+}
+
 func RegisterHandlers(b *bot.Bot) {
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(Help), bot.MatchTypeExact, handleHelp)
 	b.RegisterHandler(bot.HandlerTypeMessageText, string(ShowShows), bot.MatchTypeExact, handleShowShows)
@@ -431,4 +456,5 @@ func RegisterHandlers(b *bot.Bot) {
   b.RegisterHandler(bot.HandlerTypeMessageText, string(AddWatcherGroup), bot.MatchTypePrefix, handleAddWatcherGroup)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(RemoveWatcherGroup), bot.MatchTypePrefix, handleRemoveWatcherGroup)
   b.RegisterHandler(bot.HandlerTypeMessageText, string(RecommendShow), bot.MatchTypePrefix, handleRecommendation)
+  b.RegisterHandler(bot.HandlerTypeMessageText, string(PossibleShows), bot.MatchTypePrefix, handlePossible)
 }

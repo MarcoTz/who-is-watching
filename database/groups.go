@@ -3,6 +3,8 @@ package database
 import ( 
   "rooxo/whoiswatching/types"
   "fmt"
+  "strconv"
+  "strings"
   "database/sql"
 )
 
@@ -179,4 +181,32 @@ func RemoveWatcherGroup(group_id int, watcher_name string, db *sql.DB) error{
   if err != nil { return err }
 
   return nil
+}
+
+func GetPossibleShows(watcher_names []string, db *sql.DB) ([]types.Show, error) {
+  watcher_ids := make([]string,0)
+  for _,watcher_name := range(watcher_names){
+    watcher,err := GetWatcherByName(watcher_name,db)
+    if err != nil { return []types.Show{},err }
+    watcher_ids = append(watcher_ids,strconv.Itoa(watcher.Id))
+  }
+
+  query := fmt.Sprintf("SELECT g.show_id FROM watchgroups AS g JOIN watchers_groups AS wg ON g.rowid=wg.group_id WHERE watcher_id IN (%s)",strings.Join(watcher_ids,","))
+  res, err := db.Query(query)
+  if err != nil { return []types.Show{},err }
+  defer res.Close()
+
+  shows := make([]types.Show,0)
+  for res.Next(){
+    var show_id int 
+    err = res.Scan(&show_id)
+    if err != nil { return []types.Show{},err} 
+
+    show,err := GetShowById(show_id,db)
+    if err != nil { return []types.Show{},err}
+    shows = append(shows,*show)
+  }
+
+  return shows,nil
+
 }

@@ -1,15 +1,13 @@
 package database 
 
 import ( 
-  "rooxo/whoiswatching/types"
   "fmt"
-  "slices"
+  "rooxo/whoiswatching/types"
   "database/sql"
 )
 
 func GroupIdExists(group_id int, db *sql.DB) (bool,error){
-  query := fmt.Sprintf("SELECT COUNT(*) FROM watchgroups WHERE rowid=%d",group_id)
-  res,err := db.Query(query)
+  res,err := db.Query("SELECT COUNT(*) FROM watchgroups WHERE rowid=?",group_id)
   if err != nil { return false,err }
   defer res.Close()
 
@@ -36,8 +34,7 @@ func GetAllGroups(db *sql.DB) ([]types.WatchGroup,error){
     var done bool
     err = res.Scan(&group_id,&show_id,&current_ep,&done)
     if err != nil { return []types.WatchGroup{},err }
-    watchers_query := fmt.Sprintf("SELECT watcher_id from watchers_groups WHERE group_id=%d",group_id);
-    watchers_res,err := db.Query(watchers_query)
+    watchers_res,err := db.Query("SELECT watcher_id from watchers_groups WHERE group_id=?",group_id)
     if err!=nil { return []types.WatchGroup{},err }
 
     show,err := GetShowById(show_id,db)
@@ -66,20 +63,18 @@ func GetAllGroups(db *sql.DB) ([]types.WatchGroup,error){
 func AddWatchGroup(show_id int, db *sql.DB) (int,error){
   exists, err := ShowIdExists(show_id,db)
   if !exists{
-    return 0,&ShowIdDoesNotExist{show_id:show_id}
+    return 0,&ShowIdDoesNotExistErr{show_id:show_id}
   }
   if err!=nil{
     return 0,err
   }
 
-  query := fmt.Sprintf("INSERT INTO watchgroups (show_id,current_ep,done) VALUES (%d,1,false)",show_id)
-  _,err = db.Exec(query)
+  _,err = db.Exec("INSERT INTO watchgroups (show_id,current_ep,done) VALUES (?,1,false)",show_id)
   if err !=nil{
     return 0,err
   }
 
-  query = "SELECT MAX(rowid) FROM watchgroups"
-  res, err := db.Query(query)
+  res, err := db.Query("SELECT MAX(rowid) FROM watchgroups")
   if err != nil { return 0,err} 
   defer res.Close()
   res.Next()
@@ -96,25 +91,27 @@ func RemoveGroup(group_id int, db *sql.DB) error {
   if err != nil { return err}
   if !exists { return &GroupIdDoesNotExistErr {group_id:group_id} }
 
-  del_stmt := fmt.Sprintf("DELETE FROM watchgroups WHERE rowid=%d",group_id)
-  _,err = db.Exec(del_stmt)
+  _,err = db.Exec("DELETE FROM watchgroups WHERE rowid=?",group_id)
   if err != nil { return err }
 
-  links_stmt := fmt.Sprintf("DELETE FROM watchers_groups WHERE group_id=%d",group_id)
-  _,err = db.Exec(links_stmt)
+  _,err = db.Exec("DELETE FROM watchers_groups WHERE group_id=?",group_id)
   if err != nil { return err}
 
   return nil
 }
 
 func GetGroupsByShowName(show_name string, db *sql.DB) ([]types.WatchGroup,error) {
+  fmt.Printf("Checking exists for %s \n",show_name)
   show, err := GetShowByName(show_name,db)
   if err!= nil { return []types.WatchGroup{},err }
 
-  query := fmt.Sprintf("SELECT rowid,current_ep,done from watchgroups where show_id=%d",show.Id)
-  res,err := db.Query(query)
+  fmt.Printf("Show %s exists\n",show_name)
+
+  res,err := db.Query("SELECT rowid,current_ep,done from watchgroups where show_id=?",show.Id)
   if err!=nil {return []types.WatchGroup{},err}
   defer res.Close()
+
+  fmt.Printf("Could select from groups");
 
   groups := make([]types.WatchGroup,0)
   for res.Next(){
@@ -124,8 +121,7 @@ func GetGroupsByShowName(show_name string, db *sql.DB) ([]types.WatchGroup,error
     err = res.Scan(&group_id,&current_ep,&done)
     if err != nil {return [] types.WatchGroup{},err}
 
-    watcher_query := fmt.Sprintf("SELECT watcher_id FROM watchers_groups WHERE group_id=%d",group_id)
-    watcher_res, err := db.Query(watcher_query)
+    watcher_res, err := db.Query("SELECT watcher_id FROM watchers_groups WHERE group_id=?",group_id)
     if err != nil { return [] types.WatchGroup{},err} 
     defer watcher_res.Close()
 
@@ -153,8 +149,7 @@ func UpdateGroupEpisode(group_id int, new_ep int, db *sql.DB) error {
   if err!=nil { return err}
   if !exists { return &GroupIdDoesNotExistErr{group_id:group_id} }
 
-  stmt := fmt.Sprintf("UPDATE watchgroups SET current_ep=%d WHERE rowid=%d",new_ep,group_id)
-  _,err = db.Exec(stmt)
+  _,err = db.Exec("UPDATE watchgroups SET current_ep=? WHERE rowid=?",new_ep,group_id)
   if err != nil { return err }
 
   return nil
@@ -164,8 +159,7 @@ func AddWatcherGroup(group_id int, watcher_name string, db *sql.DB) error {
   watcher,err := GetWatcherByName(watcher_name,db)
   if err != nil { return err } 
 
-  query := fmt.Sprintf("INSERT INTO watchers_groups (group_id,watcher_id) VALUES (%d,%d)",group_id,watcher.Id)
-  _,err = db.Exec(query)
+  _,err = db.Exec("INSERT INTO watchers_groups (group_id,watcher_id) VALUES (?,?)",group_id,watcher.Id)
   if err != nil { return err } 
 
   return nil
@@ -175,8 +169,7 @@ func RemoveWatcherGroup(group_id int, watcher_name string, db *sql.DB) error{
   watcher,err := GetWatcherByName(watcher_name,db)
   if err != nil { return err}
 
-  is_watching_query := fmt.Sprintf("SELECT COUNT(*) FROM watchers_groups WHERE group_id=%d AND watcher_id=%d",group_id,watcher.Id)
-  res,err := db.Query(is_watching_query)
+  res,err := db.Query("SELECT COUNT(*) FROM watchers_groups WHERE group_id=? AND watcher_id=?",group_id,watcher.Id)
   if err != nil { return err }
 
   res.Next()
@@ -187,52 +180,59 @@ func RemoveWatcherGroup(group_id int, watcher_name string, db *sql.DB) error{
   res.Close()
 
   
-  query := fmt.Sprintf("DELETE FROM watchers_groups WHERE group_id=%d AND watcher_id=%d",group_id,watcher.Id)
-  _,err = db.Exec(query)
+  _,err = db.Exec("DELETE FROM watchers_groups WHERE group_id=? AND watcher_id=?",group_id,watcher.Id)
   if err != nil { return err }
 
   return nil
 }
 
-func GetPossibleShows(watcher_names []string, db *sql.DB) ([]types.Show, error) {
-  var possible_ids []int 
-  for _,watcher_name := range(watcher_names){
-    watcher,err := GetWatcherByName(watcher_name,db)
-    if err != nil { return []types.Show{},err }
+func GetPossible(watcher_name string, db *sql.DB) ([]types.Show, error){
+  watcher, err := GetWatcherByName(watcher_name,db)
+  if err != nil { return []types.Show{}, err}
 
-    watcher_groups_query := fmt.Sprintf("SELECT g.show_id FROM watchgroups AS g JOIN watchers_groups AS wg on wg.group_id=g.rowid WHERE wg.watcher_id=%d AND g.done=false",watcher.Id)
-    res,err := db.Query(watcher_groups_query)
-    if err != nil { return []types.Show{},err }
-    defer res.Close() 
-
-    watcher_shows := make([]int,0)
-    for res.Next(){
-      var show_id int 
-      err = res.Scan(&show_id)
-      if err != nil { return []types.Show{},err }
-      watcher_shows = append(watcher_shows,show_id)
-    }
-    if possible_ids == nil {
-      possible_ids = watcher_shows
-    }else{
-      to_keep := make([]int,0)
-      for _,show_id := range(possible_ids){
-        if slices.Contains(watcher_shows,show_id){
-          to_keep = append(to_keep,show_id)
-        }
-      }
-      possible_ids = to_keep
-    }
-  }
+  res, err := db.Query("SELECT g.show_id FROM watchgroups AS g JOIN watchers_groups AS wg ON wg.group_id=g.rowid WHERE wg.watcher_id=? AND g.done=false",watcher.Id)
+  if err != nil { return []types.Show{},err} 
+  defer res.Close()
 
   shows := make([]types.Show,0)
-  for _,show_id := range possible_ids {
-    show,err := GetShowById(show_id,db)
-    if err !=nil{return []types.Show{},err}
+  for res.Next() {
+    var show_id int 
+    err = res.Scan(&show_id)
+    if err != nil { return []types.Show{},err }
+
+    show, err := GetShowById(show_id,db)
+    if err != nil { return []types.Show{},err} 
     shows = append(shows,*show)
   }
-  return shows,nil
 
+  return shows, nil
+}
+func GetPossibleShows(watcher_names []string, db *sql.DB) ([]types.Show, error) {
+  possible_shows := make([]types.Show,0)
+  for i, watcher_name := range watcher_names{
+    watcher_possible, err := GetPossible(watcher_name,db)
+    if err != nil { return []types.Show{},err } 
+    if i==0 { possible_shows = watcher_possible } 
+
+    updated_possible := make([]types.Show,0)
+    for _,new_possible := range watcher_possible {
+      found := false 
+      for _,old_possible := range possible_shows {
+        if new_possible.Id == old_possible.Id { 
+          found = true
+          break
+        }
+      }
+
+      if found {
+        updated_possible = append(updated_possible,new_possible)
+      }
+    }
+    possible_shows = updated_possible
+
+  }
+
+  return possible_shows,nil
 }
 
 func MarkDone(group_id int, db *sql.DB) error {
@@ -240,8 +240,7 @@ func MarkDone(group_id int, db *sql.DB) error {
   if err != nil { return err}
   if !exists { return &GroupIdDoesNotExistErr{group_id:group_id} }
 
-  query := fmt.Sprintf("UPDATE watchgroups SET done=true WHERE rowid=%d",group_id)
-  _,err = db.Exec(query)
+  _,err = db.Exec("UPDATE watchgroups SET done=true WHERE rowid=?",group_id)
   if err != nil { return err }
 
   return nil
@@ -252,8 +251,7 @@ func MarkNotDone(group_id int, db *sql.DB) error {
   if err != nil { return err }
   if !exists{ return &GroupIdDoesNotExistErr{group_id:group_id} }
 
-  query := fmt.Sprintf("UPDATE watchgroups SET done=false WHERE rowid=%d",group_id)
-  _, err = db.Exec(query)
+  _, err = db.Exec("UPDATE watchgroups SET done=false WHERE rowid=?",group_id)
   if err != nil { return err }
   return nil
 }

@@ -2,14 +2,11 @@ package database
 
 import (
   "database/sql"
-  "fmt"
   "rooxo/whoiswatching/types"
 )
 
 func WatcherIdExists(watcher_id int, db *sql.DB) (bool, error) {
-
-  query := fmt.Sprintf("SELECT count(*) FROM watchers where rowid=%d", watcher_id)
-  res, err := db.Query(query)
+  res, err := db.Query("SELECT count(*) FROM watchers where rowid=?",watcher_id)
   if err != nil {
     return false, err
   }
@@ -27,8 +24,7 @@ func WatcherIdExists(watcher_id int, db *sql.DB) (bool, error) {
 }
 
 func WatcherNameExists(watcher_name string, db *sql.DB) (bool, error) {
-  query := fmt.Sprintf("SELECT count(*) FROM watchers where name='%s'", watcher_name)
-  res, err := db.Query(query)
+  res, err := db.Query("SELECT count(*) FROM watchers where name=?",watcher_name)
   if err != nil {
     return false, err
   }
@@ -49,8 +45,7 @@ func GetWatcherById(watcher_id int, db *sql.DB) (*types.Watcher, error) {
   if err != nil { return nil,err}
   if !exists {return nil,&WatcherIdDoesNotExistErr{watcher_id:watcher_id}}
 
-  query := fmt.Sprintf("SELECT name FROM watchers where rowid=%d", watcher_id)
-  res, err := db.Query(query)
+  res, err := db.Query("SELECT name FROM watchers where rowid=?",watcher_id)
   defer res.Close()
 
   if err != nil {
@@ -74,8 +69,7 @@ func GetWatcherByName(watcher_name string, db *sql.DB) (*types.Watcher,error) {
   if err != nil { return nil,err}
   if !exists { return nil, &WatcherNameDoesNotExistErr{watcher_name:watcher_name} }
 
-  query := fmt.Sprintf("SELECT rowid FROM watchers where name='%s'",watcher_name)
-  res, err := db.Query(query)
+  res, err := db.Query("SELECT rowid FROM watchers where name=?",watcher_name)
   if err!=nil { return nil,err}
   defer res.Close()
 
@@ -117,8 +111,7 @@ func AddWatcher(watcher_name string, db *sql.DB) error {
   if err != nil { return err } 
   if exists { return &WatcherExistsErr{watcher_name} }
 
-  query := fmt.Sprintf("INSERT INTO watchers (name) VALUES ('%s');",watcher_name)
-  _,err = db.Exec(query)
+  _,err = db.Exec("INSERT INTO watchers (name) VALUES (?);",watcher_name)
   if err != nil { return err }
 
   return nil
@@ -128,12 +121,10 @@ func RemoveWatcher(watcher_name string, db *sql.DB) error {
   watcher, err := GetWatcherByName(watcher_name,db)
   if err != nil { return err }
 
-  query_del := fmt.Sprintf("DELETE FROM watchers WHERE name = '%s'",watcher_name)
-  _,err = db.Exec(query_del)
+  _,err = db.Exec("DELETE FROM watchers WHERE name = ?",watcher_name)
   if err != nil { return err }
 
-  query_groups := fmt.Sprintf("DELETE FROM watchers_groups WHERE watcher_id=%d",watcher.Id)
-  _,err = db.Exec(query_groups)
+  _,err = db.Exec("DELETE FROM watchers_groups WHERE watcher_id=?",watcher.Id)
   if err!=nil { return err }
 
   return nil

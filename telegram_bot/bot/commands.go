@@ -292,12 +292,12 @@ func handleUpdateEp(ctx context.Context, b *bot.Bot, update *models.Update){
     return
   }
 
-  group_id,err := strconv.Atoi(input_sep[0])
+  group_id,err := strconv.Atoi(strings.TrimSpace(input_sep[0]))
   if err != nil { 
     b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse group id, please try again"})
     return
   }
-  ep_nr,err := strconv.Atoi(input_sep[1])
+  ep_nr,err := strconv.Atoi(strings.TrimSpace(input_sep[1]))
   if err != nil { 
     b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse episode number, please try again"})
     return
@@ -399,6 +399,9 @@ func handleRecommendation(ctx context.Context, b * bot.Bot, update *models.Updat
     shows = loaded_shows
   }else {
     watchers := strings.Split(input,SEP)
+    for ind,watcher := range(watchers){
+      watchers[ind] = strings.TrimSpace(watcher)
+    }
     loaded_shows, err := database.GetUnwatchedShows(watchers,db)
     if err != nil {
       b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:fmt.Sprintf("Could not get shows to watch: %s", err)})
@@ -406,9 +409,26 @@ func handleRecommendation(ctx context.Context, b * bot.Bot, update *models.Updat
     }
     shows = loaded_shows
   }
-    rand_show := types.RandomShow(shows)
-    b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:fmt.Sprintf("You should watch %s",rand_show.Name)})
-    return
+
+  rand_shows := make([]types.Show,0)
+  for range 5 {
+    new_rand := types.RandomShow(shows)
+    for found := false; found; {
+      for _,show := range rand_shows {
+        if show.Id == new_rand.Id { found = true }
+      }
+      new_rand = types.RandomShow(shows)
+    }
+    fmt.Printf("new show: %s",new_rand.Name)
+    rand_shows = append(rand_shows,new_rand)
+  }
+
+  shows_str := ""
+  for _, show := range rand_shows{
+    shows_str += show.Name + "\n"
+  }
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:fmt.Sprintf("You should watch\n%s",shows_str)})
+  return
 }
 
 func handlePossible(ctx context.Context, b *bot.Bot, update *models.Update){
@@ -418,6 +438,9 @@ func handlePossible(ctx context.Context, b *bot.Bot, update *models.Update){
       return
   }
   watchers := strings.Split(input,SEP)
+  for ind,watcher := range(watchers){
+    watchers[ind] = strings.TrimSpace(watcher)
+  }
 
 	db, ok := ctx.Value("database").(*sql.DB)
 	if !ok {
@@ -434,8 +457,11 @@ func handlePossible(ctx context.Context, b *bot.Bot, update *models.Update){
     b.SendMessage(ctx, &bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text:fmt.Sprintf("%s do not have a show to watch",input)})
     return
   }
-  rand_show := types.RandomShow(shows)
-  b.SendMessage(ctx, &bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text:fmt.Sprintf("%s can watch %s",input,rand_show.Name)})
+  names_str := ""
+  for _,show := range(shows){
+    names_str += show.Name+"\n"
+  }
+  b.SendMessage(ctx, &bot.SendMessageParams{ChatID:update.Message.Chat.ID, Text:fmt.Sprintf("%s can watch\n%s",input,names_str)})
 
 }
 

@@ -2,11 +2,14 @@ package database
 
 import "fmt"
 
-type ShowIdDoesNotExist struct { show_id int }
-func (e *ShowIdDoesNotExist) Error() string { return fmt.Sprintf("Show with id %d does not exist",e.show_id) }
+type ShowIdDoesNotExistErr struct { show_id int }
+func (e *ShowIdDoesNotExistErr) Error() string { return fmt.Sprintf("Show with id %d does not exist",e.show_id) }
 
-type ShowNameDoesNotExist struct { show_name string }  
-func (e *ShowNameDoesNotExist) Error() string { return fmt.Sprintf("Show %s does not exist",e.show_name) }
+type ShowNameDoesNotExistErr struct { show_name string }  
+func (e *ShowNameDoesNotExistErr) Error() string { return fmt.Sprintf("Show %s does not exist",e.show_name) }
+
+type ShowExistsErr struct {show_name string}
+func (e *ShowExistsErr) Error() string { return fmt.Sprintf("Show %s already exists",e.show_name) }
 
 type WatcherExistsErr struct { watcher_name string }
 func (e *WatcherExistsErr) Error() string{ return fmt.Sprintf("Watcher %s already exist",e.watcher_name) }

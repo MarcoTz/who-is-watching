@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+const SEP = ","
+
 type Command string
 
 const (
@@ -43,41 +45,24 @@ const (
 )
 
 func handleHelp(ctx context.Context, b *bot.Bot, update *models.Update) {
-	help_text := fmt.Sprintf(`Possible Commands
-  %s - %s
-  %s - %s
-  %s (%s) - %s
-  %s - %s
-  %s %s - %s
-  %s %s - %s
-  %s %s - %s,
-  %s %s - %s
-  %s %s - %s
-  %s %s - %s
-  %s %s %s - %s
-  %s %s %s - %s,
-  %s %s %s - %s,
-  %s (%s) - %s,
-  %s %s - %s
-  %s %s - %s
-  %s %s - %s`,
-		Help, "Get Help Message",
-		ShowShows, "Show all shows",
-		ShowGroups, "%show_name", "Show all groups (for show)",
-		ShowWatchers, "Show all watchers",
-    AddWatcher, "%watcher_name", "Add new watcher",
-    RemoveWatcher, "%watcher_name", "Remove watcher",
-    AddShow, "%show_name", "Add new show",
-    RemoveShow, "%show_name", "Remove show", 
-    AddGroup, "%show_name", "Add watchgroup",
-    RemoveGroup, "%group_id", "Remove watchgrop",
-    UpdateEp, "%group_id", "%episode_nr", "Update episode number for group",
-    AddWatcherGroup, "%group_id","%watcher_name", "Add watcher to group",
-    RemoveWatcherGroup, "%group_id", "%watcher_name", "Remove watcher from group",
-    RecommendShow, "%watcher_1 %watcher_2 ...", "Recommend show (for watchers)",
-    PossibleShows, "%watcher_1 %watcher_2 ...", "Get possible show to watch with watchers",
-    MarkDone, "%group_id", "Mark group as done",
-    MarkNotDone, "%group_id", "Mark group as not done")
+	help_text := "Possible Commands\n"
+  help_text += fmt.Sprintf("%s - %s\n", Help, "Get Help Message")
+  help_text += fmt.Sprintf("%s - %s\n",ShowShows, "Show all shows")
+  help_text += fmt.Sprintf("%s (%s) - %s\n",ShowGroups, "%show_name", "Show all groups (for show)")
+  help_text += fmt.Sprintf("%s - %s\n",ShowWatchers, "Show all watchers")
+  help_text += fmt.Sprintf("%s %s - %s\n",AddWatcher, "%watcher_name", "Add new watcher")
+  help_text += fmt.Sprintf("%s %s - %s\n",RemoveWatcher, "%watcher_name", "Remove watcher")
+  help_text += fmt.Sprintf("%s %s - %s\n",AddShow, "%show_name", "Add new show")
+  help_text += fmt.Sprintf("%s %s - %s\n",RemoveShow, "%show_name", "Remove show")
+  help_text += fmt.Sprintf("%s %s - %s\n",AddGroup, "%show_name", "Add watchgroup")
+  help_text += fmt.Sprintf("%s %s - %s\n",    RemoveGroup, "%group_id", "Remove watchgrop")
+  help_text += fmt.Sprintf("%s %s%s%s - %s\n",UpdateEp, "%group_id", SEP, "%episode_nr", "Update episode number for group")
+  help_text += fmt.Sprintf("%s %s%s%s - %s\n",RemoveWatcherGroup, "%group_id", SEP, "%watcher_name", "Remove watcher from group")
+  help_text += fmt.Sprintf("%s %s%s%s - %s\n",AddWatcherGroup, "%group_id", SEP, "%watcher_name", "Add watcher to group")
+  help_text += fmt.Sprintf("%s (%s) - %s\n",RecommendShow, "%watcher_1 %watcher_2 ...", "Recommend show (for watchers)")
+  help_text += fmt.Sprintf("%s %s - %s\n",PossibleShows, "%watcher_1 %watcher_2 ...", "Get possible show to watch with watchers")
+  help_text += fmt.Sprintf("%s %s - %s\n",MarkDone, "%group_id", "Mark group as done")
+  help_text += fmt.Sprintf("%s %s - %s\n",MarkNotDone, "%group_id", "Mark group as not done")
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: help_text})
 }
 
@@ -301,7 +286,7 @@ func handleUpdateEp(ctx context.Context, b *bot.Bot, update *models.Update){
     b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Please provide group id and episode number"})
     return 
   }
-  input_sep := strings.Split(input," ")
+  input_sep := strings.Split(input,SEP)
   if len(input_sep) != 2 {
     b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse inputs, please try again"})
     return
@@ -337,7 +322,7 @@ func handleAddWatcherGroup(ctx context.Context, b *bot.Bot, update *models.Updat
     b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Please provide group id and watcher name"})
     return 
   }
-  input_sep := strings.Split(input," ")
+  input_sep := strings.Split(input,SEP)
   if len(input_sep) != 2 {
     b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse inputs, please try again"})
     return
@@ -369,7 +354,7 @@ func handleRemoveWatcherGroup(ctx context.Context, b *bot.Bot,update *models.Upd
     b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Please provide group id and watcher name"})
     return 
   }
-  input_sep := strings.Split(input," ")
+  input_sep := strings.Split(input,SEP)
   if len(input_sep) != 2 {
     b.SendMessage(ctx,&bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:"Could not parse inputs, please try again"})
     return
@@ -413,7 +398,7 @@ func handleRecommendation(ctx context.Context, b * bot.Bot, update *models.Updat
     }
     shows = loaded_shows
   }else {
-    watchers := strings.Split(input," ")
+    watchers := strings.Split(input,SEP)
     loaded_shows, err := database.GetUnwatchedShows(watchers,db)
     if err != nil {
       b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text:fmt.Sprintf("Could not get shows to watch: %s", err)})
@@ -432,7 +417,7 @@ func handlePossible(ctx context.Context, b *bot.Bot, update *models.Update){
       b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Could not parse input, please try again"})
       return
   }
-  watchers := strings.Split(input," ")
+  watchers := strings.Split(input,SEP)
 
 	db, ok := ctx.Value("database").(*sql.DB)
 	if !ok {

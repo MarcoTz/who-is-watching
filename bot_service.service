@@ -2,7 +2,7 @@
 Description=Whos Watching Bot
 
 [Service]
-ExecStart=/home/rooxo/who-is-watching/whoiswatching
+ExecStart=/home/rooxo/who-is-watching/whoiswatching_bot
 WorkingDirectory=/home/rooxo/who-is-watching
 Type=simple
 Restart=always

@@ -8,8 +8,8 @@ import (
   "rooxo/whoiswatching/database"
 )
 
-func handle(w http.ResponseWriter, r *http.Request){
-  fmt.Fprint(w,"Hello index")
+func handleIndex(_ *sql.DB) func(w http.ResponseWriter, r *http.Request){
+  return func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w,pages.RenderIndex()) }
 }
 
 func handleShows(db *sql.DB) func(w http.ResponseWriter, r *http.Request){
@@ -31,7 +31,7 @@ func main() {
     return 
   }
 
-  http.HandleFunc("/", handle)
+  http.HandleFunc("/", handleIndex(db))
   http.HandleFunc("/shows",handleShows(db))
   http.HandleFunc("/watchers",handleWatchers(db))
   http.HandleFunc("/groups",handleGroups(db))

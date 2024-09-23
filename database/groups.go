@@ -1,7 +1,8 @@
 package database 
 
 import ( 
-  "fmt"
+  "slices"
+  "strings"
   "rooxo/whoiswatching/types"
   "database/sql"
 )
@@ -19,6 +20,42 @@ func GroupIdExists(group_id int, db *sql.DB) (bool,error){
   return num>0,nil
 }
 
+func GetGroupById(group_id int, db *sql.DB) (*types.WatchGroup, error){
+  res,err := db.Query("SELECT show_id,current_ep,done FROM watchgroups WHERE rowid=?",group_id)
+  if err!=nil { return nil,err }
+
+  var show_id int
+  var current_ep int
+  var done bool
+  res.Next()
+  err = res.Scan(&show_id,&current_ep,&done)
+  if err != nil { return nil,err} 
+  res.Close()
+  
+  show,err := GetShowById(show_id,db)
+  if err != nil { return nil,err }
+
+  res,err = db.Query("SELECT watcher_id FROM watchers_groups WHERE group_id=?",group_id)
+  if err != nil { return nil,err }
+  defer res.Close()
+
+  watchers := make([]types.Watcher,0)
+  for res.Next() {
+    var watcher_id int 
+    err = res.Scan(&watcher_id)
+    if err != nil { return nil,err }
+
+    watcher,err := GetWatcherById(watcher_id,db)
+    if err != nil { return nil,err} 
+
+    watchers = append(watchers,*watcher)
+
+  }
+
+  group := types.WatchGroup{Id:group_id,Show:*show,Current_ep:current_ep, Done:done,Watchers:watchers}
+  return &group,nil
+}
+
 func GetAllGroups(db *sql.DB) ([]types.WatchGroup,error){
   query := "SELECT rowid,show_id,current_ep,done FROM watchgroups"
   res, err := db.Query(query)
@@ -28,7 +65,7 @@ func GetAllGroups(db *sql.DB) ([]types.WatchGroup,error){
 
   groups := make([]types.WatchGroup,0)
   for res.Next() {
-    var group_id int
+    var group_id int 
     var show_id int
     var current_ep int 
     var done bool
@@ -101,17 +138,12 @@ func RemoveGroup(group_id int, db *sql.DB) error {
 }
 
 func GetGroupsByShowName(show_name string, db *sql.DB) ([]types.WatchGroup,error) {
-  fmt.Printf("Checking exists for %s \n",show_name)
   show, err := GetShowByName(show_name,db)
   if err!= nil { return []types.WatchGroup{},err }
-
-  fmt.Printf("Show %s exists\n",show_name)
 
   res,err := db.Query("SELECT rowid,current_ep,done from watchgroups where show_id=?",show.Id)
   if err!=nil {return []types.WatchGroup{},err}
   defer res.Close()
-
-  fmt.Printf("Could select from groups");
 
   groups := make([]types.WatchGroup,0)
   for res.Next(){
@@ -186,53 +218,56 @@ func RemoveWatcherGroup(group_id int, watcher_name string, db *sql.DB) error{
   return nil
 }
 
-func GetPossible(watcher_name string, db *sql.DB) ([]types.Show, error){
-  watcher, err := GetWatcherByName(watcher_name,db)
-  if err != nil { return []types.Show{}, err}
-
-  res, err := db.Query("SELECT g.show_id FROM watchgroups AS g JOIN watchers_groups AS wg ON wg.group_id=g.rowid WHERE wg.watcher_id=? AND g.done=false",watcher.Id)
-  if err != nil { return []types.Show{},err} 
+func GetGroupsByWatcher(watcher_name string, db *sql.DB) ([]types.WatchGroup, error){
+  res,err := db.Query(`
+  SELECT wg.group_id 
+  FROM watchers_groups AS wg 
+  JOIN watchers AS w ON w.rowid=wg.watcher_id 
+  JOIN watchgroups AS g ON wg.group_id=g.rowid
+  WHERE w.name=? AND g.done=false
+  `,watcher_name)
+  if err!=nil { return []types.WatchGroup{},err}
   defer res.Close()
 
-  shows := make([]types.Show,0)
-  for res.Next() {
-    var show_id int 
-    err = res.Scan(&show_id)
-    if err != nil { return []types.Show{},err }
-
-    show, err := GetShowById(show_id,db)
-    if err != nil { return []types.Show{},err} 
-    shows = append(shows,*show)
+  groups := make([]types.WatchGroup,0)
+  for res.Next(){
+    var group_id int 
+    err = res.Scan(&group_id)
+    if err !=nil { return []types.WatchGroup{},err}
+    group,err := GetGroupById(group_id,db)
+    if err != nil { return [] types.WatchGroup{},err}
+    groups = append(groups,*group)
   }
 
-  return shows, nil
+  return groups,nil
 }
-func GetPossibleShows(watcher_names []string, db *sql.DB) ([]types.Show, error) {
-  possible_shows := make([]types.Show,0)
-  for i, watcher_name := range watcher_names{
-    watcher_possible, err := GetPossible(watcher_name,db)
-    if err != nil { return []types.Show{},err } 
-    if i==0 { possible_shows = watcher_possible } 
 
-    updated_possible := make([]types.Show,0)
-    for _,new_possible := range watcher_possible {
-      found := false 
-      for _,old_possible := range possible_shows {
-        if new_possible.Id == old_possible.Id { 
-          found = true
-          break
-        }
-      }
-
-      if found {
-        updated_possible = append(updated_possible,new_possible)
+func GetPossibleShows(watcher_names []string, db *sql.DB) ([]types.Show, error){
+  if len(watcher_names) == 0 { return []types.Show{}, &NoInput{} }
+  groups,err := GetGroupsByWatcher(watcher_names[0],db)
+  if err != nil { return []types.Show{}, err}
+  
+  slices.SortFunc(watcher_names,strings.Compare)
+  groups_filtered := make([]types.WatchGroup,0)
+  for _,group := range groups{
+    group_watchers := group.GetWatchers()
+    slices.SortFunc(group_watchers,strings.Compare)
+    keep := true
+    for i := range watcher_names{ 
+      if watcher_names[i] != group_watchers[i]{
+        keep = false
+        break
       }
     }
-    possible_shows = updated_possible
-
+    if keep { groups_filtered = append(groups_filtered,group) }
   }
 
-  return possible_shows,nil
+  shows := make([]types.Show,0)
+  for _,group := range groups_filtered{
+    shows = append(shows,group.Show)
+  }
+
+  return shows,nil
 }
 
 func MarkDone(group_id int, db *sql.DB) error {

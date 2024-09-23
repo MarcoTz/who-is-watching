@@ -28,3 +28,6 @@ type NotAWatcherErr struct {
   group_id int
 }
 func (e *NotAWatcherErr) Error() string { return fmt.Sprintf("%s is not in group %d",e.watcher_name,e.group_id)} 
+
+type NoInput struct {} 
+func (e *NoInput) Error() string { return "No input provided" }

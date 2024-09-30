@@ -2,6 +2,7 @@ bot:
 	go run ./telegram_bot
 
 server:
+	- killall webserver
 	go run ./webserver 
 
 build: 

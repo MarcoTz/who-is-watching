@@ -1,12 +1,8 @@
 [package]
-name = "watcher_cli"
+name = "sqlite"
 version = "0.0.1"
 edition = "2024"
 
-[[bin]]
-name = "catcher_cli"
-path = "src/main.rs"
-
 [dependencies]
-sqlite = { path = "../sqlite" }
+turso = "0.1"
 tokio = { version = "1.0", features = ["full"] }

@@ -2,6 +2,7 @@
 members = [
   "watchers",
   "shows",
+  "sqlite",
   "cli",
 ]
 

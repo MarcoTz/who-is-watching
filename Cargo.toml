@@ -1,0 +1,9 @@
+[workspace]
+members = [
+  "watchers",
+  "shows",
+  "cli",
+]
+
+resolver = "2"
+default-members = ["cli"]

@@ -1,0 +1,8 @@
+[package]
+name = "watcher_cli"
+version = "0.0.1"
+edition = "2024"
+
+[[bin]]
+name = "catcher_cli"
+path = "src/main.rs"

@@ -9,4 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 sqlite = { path = "../sqlite" }
+shows = { path = "../shows" }
 tokio = { version = "1.0", features = ["full"] }
+
+turso = "0.1"

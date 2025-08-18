@@ -1,15 +1,7 @@
-struct Show {
-    id: u64,
-    name: String,
-    latest_episode: SeasonEpisode,
-}
+pub mod season_episode;
+pub mod show;
+pub mod show_progress;
 
-struct SeasonEpisode {
-    season_nr: u64,
-    episode_nr: u64,
-}
-
-pub struct ShowProgress {
-    show_id: u64,
-    last_watched: SeasonEpisode,
-}
+pub use season_episode::SeasonEpisode;
+pub use show::Show;
+pub use show_progress::ShowProgress;

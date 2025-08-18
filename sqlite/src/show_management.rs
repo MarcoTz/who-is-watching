@@ -84,13 +84,56 @@ async fn season_exists(drv: &DBDriver, show_id: u32, season_nr: u32) -> Result<b
     Ok(cnt != 0)
 }
 
+pub(crate) async fn get_show_id(drv: &DBDriver, show_name: &str) -> Result<u32, Error> {
+    let query = format!(
+        "SELECT {} FROM {} WHERE {}=?1",
+        ColumnName::Id,
+        Table::Shows,
+        ColumnName::Name
+    );
+    let mut stmt = drv.conn.prepare(&query).await.map_err(|err| {
+        Error::turso(
+            err,
+            SqlAction::PrepareStatement(StatementType::Select),
+            "get_show_id",
+        )
+    })?;
+    let mut rows = stmt.query([show_name]).await.map_err(|err| {
+        Error::turso(
+            err,
+            SqlAction::ExecuteStatement(StatementType::Select),
+            "get_show_id",
+        )
+    })?;
+    let row = rows
+        .next()
+        .await
+        .map_err(|err| Error::turso(err, SqlAction::GetNextRow, "get_show_id"))?
+        .ok_or(Error::no_rows(&query))?;
+    let id = u32::try_from(
+        *row.get_value(0)
+            .map_err(|err| {
+                Error::turso(
+                    err,
+                    SqlAction::GetValue("shows.id".to_owned()),
+                    "get_show_id",
+                )
+            })?
+            .as_integer()
+            .ok_or(Error::cast(&Table::Shows, &ColumnName::Id, "integer"))?,
+    )
+    .map_err(|_| Error::neg_id(&Table::Shows, &ColumnName::Id))?;
+    Ok(id)
+}
+
 async fn get_show_name(drv: &DBDriver, show_id: u32) -> Result<String, Error> {
     let mut stmt = drv
         .conn
         .prepare(&format!(
-            "SELECT {} FROM {} WHERE id=?1",
+            "SELECT {} FROM {} WHERE {}=?1",
             ColumnName::Name,
-            Table::Shows.name()
+            Table::Shows.name(),
+            ColumnName::Id
         ))
         .await
         .map_err(|err| {

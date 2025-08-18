@@ -58,8 +58,16 @@ impl DBDriver {
         show_management::show_exists(self, show_name).await
     }
 
+    pub async fn get_show_id(&self, show_name: &str) -> Result<u32, Error> {
+        show_management::get_show_id(self, show_name).await
+    }
+
     pub async fn watcher_exists(&self, watcher_name: &str) -> Result<bool, Error> {
         watcher_management::watcher_exists(self, watcher_name).await
+    }
+
+    pub async fn get_watcher_id(&self, watcher_name: &str) -> Result<u32, Error> {
+        watcher_management::get_watcher_id(self, watcher_name).await
     }
 
     pub async fn get_watchers(&self) -> Result<Vec<Watcher>, Error> {
@@ -68,6 +76,14 @@ impl DBDriver {
 
     pub async fn get_shows(&self) -> Result<Vec<Show>, Error> {
         show_management::get_shows(self).await
+    }
+
+    pub async fn update_progress(
+        &self,
+        watcher_id: u32,
+        progress: &ShowProgress,
+    ) -> Result<(), Error> {
+        show_management::update_progress(self, watcher_id, progress).await
     }
 
     pub async fn create_show(&self, show: &Show) -> Result<(), Error> {

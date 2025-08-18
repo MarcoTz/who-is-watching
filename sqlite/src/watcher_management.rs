@@ -225,7 +225,45 @@ pub async fn watcher_exists(drv: &DBDriver, watcher_name: &str) -> Result<bool, 
     Ok(cnt != 0)
 }
 
-pub async fn create_watcher(drv: &DBDriver, watcher: &Watcher) -> Result<(), Error> {
+pub(crate) async fn get_watcher_id(drv: &DBDriver, watcher_name: &str) -> Result<u32, Error> {
+    let query = format!(
+        "SELECT {} FROM {} WHERE {}=?1",
+        ColumnName::Id,
+        Table::Watchers,
+        ColumnName::Name
+    );
+    let mut stmt = drv.conn.prepare(&query).await.map_err(|err| {
+        Error::turso(
+            err,
+            SqlAction::PrepareStatement(StatementType::Select),
+            "get_watcher_id",
+        )
+    })?;
+
+    let mut rows = stmt.query([watcher_name]).await.map_err(|err| {
+        Error::turso(
+            err,
+            SqlAction::ExecuteStatement(StatementType::Select),
+            "get_watcher_id",
+        )
+    })?;
+
+    let row = rows
+        .next()
+        .await
+        .map_err(|err| Error::turso(err, SqlAction::GetNextRow, "get_watcher_id"))?
+        .ok_or(Error::no_rows(&query))?;
+    let id = u32::try_from(
+        *row.get_value(0)
+            .map_err(|err| Error::turso(err, SqlAction::GetNextRow, "get_watcher_id"))?
+            .as_integer()
+            .ok_or(Error::cast(&Table::Watchers, &ColumnName::Id, "integer"))?,
+    )
+    .map_err(|_| Error::neg_id(&Table::Watchers, &ColumnName::Id))?;
+    Ok(id)
+}
+
+pub(crate) async fn create_watcher(drv: &DBDriver, watcher: &Watcher) -> Result<(), Error> {
     if drv.watcher_exists(&watcher.name).await? {
         return Err(Error::watcher_exists(&watcher.name));
     }

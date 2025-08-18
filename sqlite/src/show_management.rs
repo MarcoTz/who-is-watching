@@ -3,9 +3,9 @@ use crate::{
     errors::{Error, SqlAction, StatementType},
     schema::{ColumnName, Table},
 };
-use shows::Show;
+use shows::{Show, ShowProgress};
 
-pub async fn show_exists(drv: &DBDriver, name: &str) -> Result<bool, Error> {
+pub(crate) async fn show_exists(drv: &DBDriver, name: &str) -> Result<bool, Error> {
     let query = format!(
         "SELECT COUNT({}) FROM {} WHERE {}=?1",
         ColumnName::Id,
@@ -39,7 +39,7 @@ pub async fn show_exists(drv: &DBDriver, name: &str) -> Result<bool, Error> {
     Ok(cnt != 0)
 }
 
-pub async fn season_exists(drv: &DBDriver, show_id: u32, season_nr: u32) -> Result<bool, Error> {
+async fn season_exists(drv: &DBDriver, show_id: u32, season_nr: u32) -> Result<bool, Error> {
     let query = format!(
         "SELECT COUNT({}) FROM {} WHERE {}=?1 AND {}=?2",
         ColumnName::ShowId,
@@ -84,7 +84,7 @@ pub async fn season_exists(drv: &DBDriver, show_id: u32, season_nr: u32) -> Resu
     Ok(cnt != 0)
 }
 
-pub async fn get_show_name(drv: &DBDriver, show_id: u32) -> Result<String, Error> {
+async fn get_show_name(drv: &DBDriver, show_id: u32) -> Result<String, Error> {
     let mut stmt = drv
         .conn
         .prepare(&format!(
@@ -121,7 +121,7 @@ pub async fn get_show_name(drv: &DBDriver, show_id: u32) -> Result<String, Error
     Ok(name.clone())
 }
 
-pub async fn get_max_season(drv: &DBDriver, show_id: u32) -> Result<u32, Error> {
+async fn get_max_season(drv: &DBDriver, show_id: u32) -> Result<u32, Error> {
     let show_name = get_show_name(drv, show_id).await?;
     let mut stmt = drv
         .conn
@@ -167,8 +167,8 @@ pub async fn get_max_season(drv: &DBDriver, show_id: u32) -> Result<u32, Error> 
     Ok(season)
 }
 
-pub async fn get_show(drv: &DBDriver, show_id: u32) -> Result<Show, Error> {
-    let max_season = drv.get_max_season(show_id).await?;
+async fn get_show(drv: &DBDriver, show_id: u32) -> Result<Show, Error> {
+    let max_season = get_max_season(drv, show_id).await?;
     let mut stmt = drv
         .conn
         .prepare(&format!(
@@ -232,7 +232,7 @@ pub async fn get_show(drv: &DBDriver, show_id: u32) -> Result<Show, Error> {
     Ok(Show::new(show_id, name.as_str(), max_season, episodes))
 }
 
-pub async fn get_show_ids(drv: &DBDriver) -> Result<Vec<u32>, Error> {
+async fn get_show_ids(drv: &DBDriver) -> Result<Vec<u32>, Error> {
     let mut stmt = drv
         .conn
         .prepare(&format!(
@@ -275,17 +275,17 @@ pub async fn get_show_ids(drv: &DBDriver) -> Result<Vec<u32>, Error> {
     Ok(ids)
 }
 
-pub async fn load_shows(drv: &DBDriver) -> Result<Vec<Show>, Error> {
+pub(crate) async fn get_shows(drv: &DBDriver) -> Result<Vec<Show>, Error> {
     let mut shows = vec![];
-    let ids = drv.get_show_ids().await?;
+    let ids = get_show_ids(drv).await?;
     for show_id in ids {
-        shows.push(drv.get_show(show_id).await?);
+        shows.push(get_show(drv, show_id).await?);
     }
     Ok(shows)
 }
 
-pub async fn create_show(drv: &DBDriver, show: &Show) -> Result<(), Error> {
-    if drv.show_exists(&show.name).await? {
+pub(crate) async fn create_show(drv: &DBDriver, show: &Show) -> Result<(), Error> {
+    if show_exists(drv, &show.name).await? {
         return Err(Error::show_exists(&show.name));
     }
     let shows_query = format!(
@@ -308,7 +308,8 @@ pub async fn create_show(drv: &DBDriver, show: &Show) -> Result<(), Error> {
             )
         })?;
 
-    drv.add_season(
+    add_season(
+        drv,
         show.id,
         show.latest_episode.season_nr,
         show.latest_episode.episode_nr,
@@ -317,14 +318,14 @@ pub async fn create_show(drv: &DBDriver, show: &Show) -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn add_season(
+async fn add_season(
     drv: &DBDriver,
     show_id: u32,
     season_nr: u32,
     num_episodes: u32,
 ) -> Result<(), Error> {
-    if drv.season_exists(show_id, season_nr).await? {
-        let show_name = drv.get_show_name(show_id).await?;
+    if season_exists(drv, show_id, season_nr).await? {
+        let show_name = get_show_name(drv, show_id).await?;
         return Err(Error::season_exists(&show_name, season_nr));
     }
     let seasons_query = format!(
@@ -342,6 +343,122 @@ pub async fn add_season(
                 err,
                 SqlAction::ExecuteStatement(StatementType::Insert),
                 "add_season",
+            )
+        })?;
+    Ok(())
+}
+
+async fn progress_exists(drv: &DBDriver, watcher_id: u32, show_id: u32) -> Result<bool, Error> {
+    let query = format!(
+        "SELECT COUNT(*) FROM {} WHERE {}=?1 AND {}=?2",
+        Table::ShowsWatchers,
+        ColumnName::WatcherId,
+        ColumnName::ShowId
+    );
+    let mut stmt = drv.conn.prepare(&query).await.map_err(|err| {
+        Error::turso(
+            err,
+            SqlAction::PrepareStatement(StatementType::Select),
+            "progress_exists",
+        )
+    })?;
+    let mut rows = stmt.query([watcher_id, show_id]).await.map_err(|err| {
+        Error::turso(
+            err,
+            SqlAction::ExecuteStatement(StatementType::Select),
+            "progress_exists",
+        )
+    })?;
+    let row = rows
+        .next()
+        .await
+        .map_err(|err| Error::turso(err, SqlAction::GetNextRow, "progress_exists"))?
+        .ok_or(Error::no_rows(&query))?;
+    let cnt = *row
+        .get_value(0)
+        .map_err(|err| {
+            Error::turso(
+                err,
+                SqlAction::GetValue("Count".to_owned()),
+                "progress_exists",
+            )
+        })?
+        .as_integer()
+        .ok_or(Error::cast(
+            &Table::ShowsWatchers,
+            &ColumnName::WatcherId,
+            "integer",
+        ))?;
+    Ok(cnt != 0)
+}
+
+pub(crate) async fn update_progress(
+    drv: &DBDriver,
+    watcher_id: u32,
+    progress: &ShowProgress,
+) -> Result<(), Error> {
+    if !progress_exists(drv, watcher_id, progress.show_id).await? {
+        return create_progress(drv, watcher_id, progress).await;
+    }
+
+    let query = format!(
+        "UPDATE {} SET {}=?1, {}=?2 WHERE {}=?3 AND {}=?4",
+        Table::ShowsWatchers,
+        ColumnName::SeasonNum,
+        ColumnName::NumEpisodes,
+        ColumnName::WatcherId,
+        ColumnName::ShowId
+    );
+    drv.conn
+        .execute(
+            &query,
+            [
+                progress.last_watched.season_nr,
+                progress.last_watched.episode_nr,
+                watcher_id,
+                progress.show_id,
+            ],
+        )
+        .await
+        .map_err(|err| {
+            Error::turso(
+                err,
+                SqlAction::ExecuteStatement(StatementType::Insert),
+                "update_progress",
+            )
+        })?;
+    Ok(())
+}
+
+async fn create_progress(
+    drv: &DBDriver,
+    watcher_id: u32,
+    progress: &ShowProgress,
+) -> Result<(), Error> {
+    let query = format!(
+        "INSERT INTO {} ({},{},{},{}) VALUES (?1,?2,?3,?4)",
+        Table::ShowsWatchers,
+        ColumnName::WatcherId,
+        ColumnName::ShowId,
+        ColumnName::SeasonNum,
+        ColumnName::NumEpisodes
+    );
+    drv.conn
+        .execute(
+            &query,
+            [
+                watcher_id,
+                progress.show_id,
+                progress.last_watched.season_nr,
+                progress.last_watched.episode_nr,
+            ],
+        )
+        .await
+        .map_err(|err| {
+            Error::turso(
+                err,
+                SqlAction::ExecuteStatement(StatementType::Insert),
+                "create_progress",
             )
         })?;
     Ok(())

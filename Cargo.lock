@@ -935,6 +935,7 @@ dependencies = [
  "shows",
  "tokio",
  "turso",
+ "watchers",
 ]
 
 [[package]]
@@ -1345,12 +1346,14 @@ dependencies = [
  "sqlite",
  "tokio",
  "turso",
+ "watchers",
 ]
 
 [[package]]
 name = "watchers"
 version = "0.0.1"
 dependencies = [
+ "rand 0.9.2",
  "shows",
 ]
 

@@ -50,6 +50,9 @@ pub enum Error {
         show_name: String,
         season_nr: u32,
     },
+    WatcherExists {
+        name: String,
+    },
 }
 
 impl Error {
@@ -104,6 +107,12 @@ impl Error {
             season_nr: season,
         }
     }
+
+    pub fn watcher_exists(name: &str) -> Error {
+        Error::WatcherExists {
+            name: name.to_owned(),
+        }
+    }
 }
 
 impl fmt::Display for Error {
@@ -137,6 +146,9 @@ impl fmt::Display for Error {
                 f,
                 "Cannot create season {season_nr} for show {show_name}, season already exists"
             ),
+            Error::WatcherExists { name } => {
+                write!(f, "Could not create watcher {name}, watcher already exists")
+            }
         }
     }
 }

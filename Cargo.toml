@@ -3,7 +3,9 @@ members = [
   "watchers",
   "shows",
   "sqlite",
+  
   "cli",
+  "server"
 ]
 
 resolver = "2"

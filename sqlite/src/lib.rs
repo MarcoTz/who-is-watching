@@ -62,6 +62,10 @@ impl DBDriver {
         show_management::get_show_id(self, show_name).await
     }
 
+    pub async fn get_show_name(&self, show_id: u32) -> Result<String, Error> {
+        show_management::get_show_name(self, show_id).await
+    }
+
     pub async fn watcher_exists(&self, watcher_name: &str) -> Result<bool, Error> {
         watcher_management::watcher_exists(self, watcher_name).await
     }

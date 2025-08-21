@@ -126,7 +126,7 @@ pub(crate) async fn get_show_id(drv: &DBDriver, show_name: &str) -> Result<u32, 
     Ok(id)
 }
 
-async fn get_show_name(drv: &DBDriver, show_id: u32) -> Result<String, Error> {
+pub(crate) async fn get_show_name(drv: &DBDriver, show_id: u32) -> Result<String, Error> {
     let mut stmt = drv
         .conn
         .prepare(&format!(

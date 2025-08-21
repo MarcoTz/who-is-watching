@@ -97,12 +97,16 @@ pub async fn get_watcher_shows(
     watcher_id: u32,
 ) -> Result<Vec<ShowProgress>, Error> {
     let query = format!(
-        "SELECT {},{},{} FROM {} WHERE {}=?1",
-        ColumnName::ShowId,
-        ColumnName::SeasonNum,
-        ColumnName::NumEpisodes,
+        "SELECT {},{},{},{} FROM {},{} WHERE {}=?1 AND {} = {}",
+        ColumnName::ShowId.qualified(&Table::ShowsWatchers),
+        ColumnName::Name.qualified(&Table::Shows),
+        ColumnName::SeasonNum.qualified(&Table::ShowsWatchers),
+        ColumnName::NumEpisodes.qualified(&Table::ShowsWatchers),
         Table::ShowsWatchers,
-        ColumnName::WatcherId
+        Table::Shows,
+        ColumnName::WatcherId.qualified(&Table::ShowsWatchers),
+        ColumnName::Id.qualified(&Table::Shows),
+        ColumnName::ShowId.qualified(&Table::ShowsWatchers),
     );
     let mut stmt = drv.conn.prepare(&query).await.map_err(|err| {
         Error::turso(
@@ -141,8 +145,20 @@ pub async fn get_watcher_shows(
                 ))?,
         )
         .map_err(|_| Error::neg_id(&Table::ShowsWatchers, &ColumnName::ShowId))?;
+        let show_name = row
+            .get_value(1)
+            .map_err(|err| {
+                Error::turso(
+                    err,
+                    SqlAction::GetValue("show_name".to_owned()),
+                    "get_watcher_shows",
+                )
+            })?
+            .as_text()
+            .ok_or(Error::cast(&Table::Shows, &ColumnName::Name, "text"))?
+            .clone();
         let season_nr = u32::try_from(
-            *row.get_value(1)
+            *row.get_value(2)
                 .map_err(|err| {
                     Error::turso(
                         err,
@@ -176,7 +192,9 @@ pub async fn get_watcher_shows(
         )
         .map_err(|_| Error::neg_id(&Table::ShowsWatchers, &ColumnName::NumEpisodes))?;
 
-        progress.push(ShowProgress::new(show_id, season_nr, episode_nr))
+        progress.push(ShowProgress::new(
+            show_id, &show_name, season_nr, episode_nr,
+        ))
     }
     Ok(progress)
 }

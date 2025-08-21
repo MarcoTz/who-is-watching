@@ -1,3 +1,4 @@
+use crate::schema::Table;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
@@ -8,6 +9,12 @@ pub enum ColumnName {
     SeasonNum,
     NumEpisodes,
     WatcherId,
+}
+
+impl ColumnName {
+    pub fn qualified(&self, table: &Table) -> String {
+        format!("{}.{}", table, self)
+    }
 }
 
 pub struct ColumnDescription {

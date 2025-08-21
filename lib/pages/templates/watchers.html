@@ -5,5 +5,15 @@
   </head>
   <body>  
     {% include "header.html" %}
+    {% for watcher in watchers %}
+    <div>
+      <h3>{{ watcher.name }}</h3>
+      <ul>
+        {% for progress in watcher.watching %}
+        <li>{{ progress.show_name }}, {{ progress.last_watched }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
   </body>
 </html>

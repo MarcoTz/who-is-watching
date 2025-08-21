@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[derive(Debug)]
 pub struct SeasonEpisode {
     pub season_nr: u32,
     pub episode_nr: u32,

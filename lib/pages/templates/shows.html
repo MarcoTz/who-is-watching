@@ -5,5 +5,13 @@
   </head>
   <body>
     {% include "header.html" %}
+    <h1>Shows</h1>
+    <div>
+      <ul>
+      {% for show in shows %}
+      <div>{{ show.name }} {{ show.latest_episode }}</div>
+      {% endfor %}
+      </ul>
+    </div>
   </body>
 </html>

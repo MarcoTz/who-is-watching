@@ -8,7 +8,8 @@ pub mod schema;
 pub mod show_management;
 pub mod watcher_management;
 
-use errors::{Error, SqlAction};
+pub use errors::Error;
+use errors::SqlAction;
 use schema::Table;
 
 const DB_FILE: &str = "watchers_db.sqlite";

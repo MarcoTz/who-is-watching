@@ -905,6 +905,9 @@ name = "pages"
 version = "0.0.1"
 dependencies = [
  "askama",
+ "shows",
+ "sqlite",
+ "watchers",
 ]
 
 [[package]]
@@ -1757,6 +1760,7 @@ version = "0.0.1"
 dependencies = [
  "axum",
  "pages",
+ "sqlite",
  "tokio",
  "tower-http",
 ]

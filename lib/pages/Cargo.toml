@@ -4,4 +4,8 @@ version = "0.0.1"
 edition = "2024"
 
 [dependencies]
+sqlite = { path = "../sqlite" }
+watchers = { path = "../watchers" }
+shows = { path = "../shows" }
+
 askama = { version = "0.14.0" }

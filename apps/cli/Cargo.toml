@@ -1,12 +1,12 @@
 [package]
-name = "watcher_server"
+name = "watcher_cli"
 version = "0.0.1"
 edition = "2024"
 
 [[bin]]
-name = "watcher_server"
+name = "catcher_cli"
 path = "src/main.rs"
 
 [dependencies]
+sqlite = { path = "../../lib/sqlite" }
 tokio = { version = "1.0", features = ["full"] }
-axum = { version = "0.8.4" }

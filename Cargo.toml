@@ -1,12 +1,13 @@
 [workspace]
 members = [
-  "watchers",
-  "shows",
-  "sqlite",
+  "lib/watchers",
+  "lib/shows",
+  "lib/sqlite",
+  "lib/pages",
   
-  "cli",
-  "server"
+  "apps/cli",
+  "apps/server"
 ]
 
 resolver = "2"
-default-members = ["cli"]
+default-members = ["apps/cli","apps/server"]

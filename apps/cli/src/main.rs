@@ -3,7 +3,8 @@ use sqlite::DBDriver;
 #[tokio::main]
 async fn main() -> Result<(), sqlite::errors::Error> {
     let drv = DBDriver::connect().await?;
-    let watchers = drv.get_watchers().await?;
+    drv.get_shows().await?;
+    /*let watchers = drv.get_watchers().await?;
     println!("All watchers");
     for watcher in watchers {
         println!("{} ({})", watcher.name, watcher.id);
@@ -12,7 +13,7 @@ async fn main() -> Result<(), sqlite::errors::Error> {
             println!("\t{} {:?}", show, progress.last_watched);
         }
         println!("");
-    }
+    }*/
 
     Ok(())
 }

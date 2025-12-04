@@ -54,13 +54,16 @@ async fn season_exists(drv: &DBDriver, show_id: u32, season_nr: u32) -> Result<b
             "season_exists",
         )
     })?;
-    let mut rows = stmt.query([show_id, season_nr]).await.map_err(|err| {
-        Error::turso(
-            err,
-            SqlAction::ExecuteStatement(StatementType::Select),
-            "season_exists",
-        )
-    })?;
+    let mut rows = stmt
+        .query([show_id as i64, season_nr as i64])
+        .await
+        .map_err(|err| {
+            Error::turso(
+                err,
+                SqlAction::ExecuteStatement(StatementType::Select),
+                "season_exists",
+            )
+        })?;
     let row = rows
         .next()
         .await
@@ -127,23 +130,20 @@ pub(crate) async fn get_show_id(drv: &DBDriver, show_name: &str) -> Result<u32, 
 }
 
 pub(crate) async fn get_show_name(drv: &DBDriver, show_id: u32) -> Result<String, Error> {
-    let mut stmt = drv
-        .conn
-        .prepare(&format!(
-            "SELECT {} FROM {} WHERE {}=?1",
-            ColumnName::Name,
-            Table::Shows.name(),
-            ColumnName::Id
-        ))
-        .await
-        .map_err(|err| {
-            Error::turso(
-                err,
-                SqlAction::PrepareStatement(StatementType::Select),
-                "get_show_name",
-            )
-        })?;
-    let mut rows = stmt.query([show_id]).await.map_err(|err| {
+    let query = format!(
+        "SELECT {} FROM {} WHERE {}=?1",
+        ColumnName::Name,
+        Table::Shows,
+        ColumnName::Id
+    );
+    let mut stmt = drv.conn.prepare(&query).await.map_err(|err| {
+        Error::turso(
+            err,
+            SqlAction::PrepareStatement(StatementType::Select),
+            "get_show_name",
+        )
+    })?;
+    let mut rows = stmt.query([show_id as i64]).await.map_err(|err| {
         Error::turso(
             err,
             SqlAction::ExecuteStatement(StatementType::Select),
@@ -171,7 +171,7 @@ async fn get_max_season(drv: &DBDriver, show_id: u32) -> Result<u32, Error> {
         .prepare(&format!(
             "SELECT MAX({}) FROM {} WHERE {}=?1;",
             ColumnName::SeasonNum,
-            Table::ShowsSeasons.name(),
+            Table::ShowsSeasons,
             ColumnName::ShowId
         ))
         .await
@@ -182,7 +182,7 @@ async fn get_max_season(drv: &DBDriver, show_id: u32) -> Result<u32, Error> {
                 "get_max_season",
             )
         })?;
-    let mut rows = stmt.query([show_id]).await.map_err(|err| {
+    let mut rows = stmt.query([show_id as i64]).await.map_err(|err| {
         Error::turso(
             err,
             SqlAction::ExecuteStatement(StatementType::Select),
@@ -211,23 +211,19 @@ async fn get_max_season(drv: &DBDriver, show_id: u32) -> Result<u32, Error> {
 }
 
 async fn get_show(drv: &DBDriver, show_id: u32) -> Result<Show, Error> {
+    let show_name = get_show_name(drv, show_id).await?;
     let max_season = get_max_season(drv, show_id).await?;
     let mut stmt = drv
         .conn
         .prepare(&format!(
             "
-                SELECT {}.{},se.{} 
-                FROM {},{} as se 
-                WHERE se.{}={}.{} AND se.{} = ?1;",
-            Table::Shows,
-            ColumnName::Name,
+                SELECT {} 
+                FROM {} 
+                WHERE {} = ?1; AND {}=?2",
             ColumnName::NumEpisodes,
-            Table::Shows.name(),
-            Table::ShowsSeasons.name(),
+            Table::ShowsSeasons,
+            ColumnName::SeasonNum,
             ColumnName::ShowId,
-            Table::Shows,
-            ColumnName::Id,
-            ColumnName::SeasonNum
         ))
         .await
         .map_err(|err| {
@@ -237,26 +233,23 @@ async fn get_show(drv: &DBDriver, show_id: u32) -> Result<Show, Error> {
                 "get_show",
             )
         })?;
-    let mut rows = stmt.query([max_season]).await.map_err(|err| {
-        Error::turso(
-            err,
-            SqlAction::ExecuteStatement(StatementType::Select),
-            "get_show",
-        )
-    })?;
+    let mut rows = stmt
+        .query([show_id as i64, max_season as i64])
+        .await
+        .map_err(|err| {
+            Error::turso(
+                err,
+                SqlAction::ExecuteStatement(StatementType::Select),
+                "get_show",
+            )
+        })?;
     let row = rows
         .next()
         .await
         .map_err(|err| Error::turso(err, SqlAction::GetNextRow, "get_show"))?
         .ok_or(Error::show_not_found(show_id))?;
-    let name_val = row
-        .get_value(0)
-        .map_err(|err| Error::turso(err, SqlAction::GetValue("Name".to_owned()), "get_show"))?;
-    let name = name_val
-        .as_text()
-        .ok_or(Error::cast(&Table::Shows, &ColumnName::Name, "text"))?;
     let episodes = u32::try_from(
-        *row.get_value(1)
+        *row.get_value(0)
             .map_err(|err| {
                 Error::turso(
                     err,
@@ -272,14 +265,14 @@ async fn get_show(drv: &DBDriver, show_id: u32) -> Result<Show, Error> {
             ))?,
     )
     .map_err(|_| Error::neg_id(&Table::ShowsSeasons, &ColumnName::NumEpisodes))?;
-    Ok(Show::new(show_id, name.as_str(), max_season, episodes))
+    Ok(Show::new(show_id, &show_name, max_season, episodes))
 }
 
 async fn get_show_ids(drv: &DBDriver) -> Result<Vec<u32>, Error> {
     let mut stmt = drv
         .conn
         .prepare(&format!(
-            "SELECT {} FROM {};",
+            "SELECT {} FROM {}",
             ColumnName::Id,
             Table::Shows.name()
         ))
@@ -405,13 +398,16 @@ async fn progress_exists(drv: &DBDriver, watcher_id: u32, show_id: u32) -> Resul
             "progress_exists",
         )
     })?;
-    let mut rows = stmt.query([watcher_id, show_id]).await.map_err(|err| {
-        Error::turso(
-            err,
-            SqlAction::ExecuteStatement(StatementType::Select),
-            "progress_exists",
-        )
-    })?;
+    let mut rows = stmt
+        .query([watcher_id as i64, show_id as i64])
+        .await
+        .map_err(|err| {
+            Error::turso(
+                err,
+                SqlAction::ExecuteStatement(StatementType::Select),
+                "progress_exists",
+            )
+        })?;
     let row = rows
         .next()
         .await
